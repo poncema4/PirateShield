@@ -26,16 +26,18 @@ to ensure consistent processing and analysis
 
 ## Field Definitions:
 
-event_id -> unique identifier for the event
-timestamp -> EST timestamp based on timezone
-source_ip -> originating IP address
-destination_ip -> destination IP address
-destination_port -> destination port number
-protocol -> network protocol (TCP/UDP)
-bytes_sent -> bytes sent from the source
-bytes_received -> bytes received by the source
-device_id -> identifier of the reporting device
-event_type -> type of network event
+| Field | Description |
+|------|------------|
+| `event_id` | Unique identifier for the event |
+| `timestamp` | ISO 8601 UTC timestamp |
+| `source_ip` | Originating IP address |
+| `destination_ip` | Destination IP address |
+| `destination_port` | Destination port number |
+| `protocol` | Network protocol (TCP or UDP) |
+| `bytes_sent` | Bytes sent from the source |
+| `bytes_received` | Bytes received by the source |
+| `device_id` | Identifier of the reporting device |
+| `event_type` | Type of network event |
 
 ---
 
