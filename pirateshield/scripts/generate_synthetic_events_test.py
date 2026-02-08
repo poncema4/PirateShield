@@ -38,18 +38,33 @@ def generate_event(base_time_est, index):
     }
 
 def main():
-    events = []
+    # Load existing events if file exists
+    existing_events = []
+    if OUTPUT_FILE.exists():
+        try:
+            with open(OUTPUT_FILE, "r") as f:
+                existing_events = json.load(f)
+        except json.JSONDecodeError:
+            existing_events = []
+    
+    # Generate new events
+    new_events = []
     base_time_est = datetime.now(EST)
 
     for i in range(5):
-        events.append(generate_event(base_time_est, i))
+        new_events.append(generate_event(base_time_est, i))
 
+    # Combine existing and new events
+    events = existing_events + new_events
+
+    # Ensure directory exists
     OUTPUT_FILE.parent.mkdir(parents=True, exist_ok=True)
 
+    # Write all events back to file
     with open(OUTPUT_FILE, "w") as f:
         json.dump(events, f, indent=2)
 
-    print(f"Generated {len(events)} synthetic events in EST at:")
+    print(f"{len(events)} synthetic events total in EST at:")
     print(OUTPUT_FILE)
 
 if __name__ == "__main__":
