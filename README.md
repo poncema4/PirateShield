@@ -14,12 +14,25 @@
 
 ### Installation
 
-1. Clone the repository and navigate to the project folder:
+1. Download Node.js
+```
+https://nodejs.org/en
+```
+
+2. Make sure you have a working version
+```
+npm -v
+```
+```
+node -v
+```
+
+3. Clone the repository and navigate to the project folder:
 ```bash
 cd pirateshield
 ```
 
-2. Install dependencies:
+4. Install dependencies:
 ```bash
 npm install
 ```
