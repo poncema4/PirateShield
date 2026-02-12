@@ -26,7 +26,7 @@ interface NetworkEvent {
 app.use(express.json());
 
 app.get('/', (req, res) => {
-  const filePath = path.join(__dirname, 'data', 'synthetic_events.json');
+  const filePath = path.join(__dirname, 'data', 'synthetic_network_events.json');
   
   let events: NetworkEvent[] = [];
   if (fs.existsSync(filePath)) {
@@ -147,7 +147,7 @@ app.get('/', (req, res) => {
 
 // API endpoint to add events
 app.post('/api/add', (req, res) => {
-  const python = spawn('python3', ['scripts/generate_synthetic_events_test.py']);
+  const python = spawn('python3', ['scripts/generate_network_events.py']);
   
   python.on('close', (code) => {
     if (code === 0) {
@@ -164,7 +164,7 @@ app.post('/api/add', (req, res) => {
 
 // API endpoint to reset events
 app.post('/api/reset', (req, res) => {
-  const filePath = path.join(__dirname, 'data', 'synthetic_events.json');
+  const filePath = path.join(__dirname, 'data', 'synthetic_network_events.json');
   
   try {
     fs.writeFileSync(filePath, JSON.stringify([], null, 2));

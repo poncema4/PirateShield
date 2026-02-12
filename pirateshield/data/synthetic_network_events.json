@@ -118,5 +118,65 @@
     "bytes_received": 48993,
     "device_id": "host-A",
     "event_type": "network_connection"
+  },
+  {
+    "event_id": "9e3b3dd1-3031-4a1b-939e-5928b3a9d966",
+    "timestamp": "2026-02-12T13:57:57.924742-05:00",
+    "source_ip": "10.0.0.9",
+    "destination_ip": "8.8.8.8",
+    "destination_port": 80,
+    "protocol": "UDP",
+    "bytes_sent": 65562766,
+    "bytes_received": 7017,
+    "device_id": "host-B",
+    "event_type": "network_connection"
+  },
+  {
+    "event_id": "ed562c36-ad3a-44d4-a802-2b926046799b",
+    "timestamp": "2026-02-12T13:58:02.924742-05:00",
+    "source_ip": "10.0.0.5",
+    "destination_ip": "8.8.8.8",
+    "destination_port": 1080,
+    "protocol": "UDP",
+    "bytes_sent": 45050033,
+    "bytes_received": 4709,
+    "device_id": "host-A",
+    "event_type": "network_connection"
+  },
+  {
+    "event_id": "916e568f-f14b-4aed-bcf3-c6af72396f23",
+    "timestamp": "2026-02-12T13:58:07.924742-05:00",
+    "source_ip": "10.0.0.5",
+    "destination_ip": "8.8.8.8",
+    "destination_port": 1080,
+    "protocol": "UDP",
+    "bytes_sent": 34043839,
+    "bytes_received": 9709,
+    "device_id": "host-A",
+    "event_type": "network_connection"
+  },
+  {
+    "event_id": "7cbb4f69-39a3-4d85-8e08-39a4aefa2051",
+    "timestamp": "2026-02-12T13:58:12.924742-05:00",
+    "source_ip": "10.0.0.5",
+    "destination_ip": "185.220.101.1",
+    "destination_port": 8080,
+    "protocol": "UDP",
+    "bytes_sent": 71002714,
+    "bytes_received": 14402,
+    "device_id": "host-B",
+    "event_type": "network_connection"
+  },
+  {
+    "event_id": "24d53150-6b20-41fb-80f6-cf76d9ea1370",
+    "timestamp": "2026-02-12T13:58:17.924742-05:00",
+    "source_ip": "10.0.0.5",
+    "destination_ip": "203.0.113.45",
+    "destination_port": 1194,
+    "protocol": "UDP",
+    "bytes_sent": 30696114,
+    "bytes_received": 20444,
+    "device_id": "host-C",
+    "event_type": "network_connection"
   }
 ]

@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parents[1]
-OUTPUT_FILE = BASE_DIR / "data" / "synthetic_events.json"
+OUTPUT_FILE = BASE_DIR / "data" / "synthetic_network_events.json"
 
 EST = timezone(timedelta(hours=-5))
 
