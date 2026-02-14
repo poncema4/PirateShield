@@ -20,16 +20,20 @@ DESTINATION_IPS = [
 DESTINATION_PORTS = [80, 443, 8080, 1080, 1194]
 PROTOCOLS = ["TCP", "UDP"]
 DEVICES = ["host-A", "host-B", "host-C"]
+USERS = ["student1", "teacher2", "it_staff3"]
 
 def generate_event(base_time_est, index):
     event_time_est = base_time_est + timedelta(seconds=index * 5)
 
     return {
+        "user_id": random.choice(USERS),
         "event_id": str(uuid.uuid4()),
         "timestamp": event_time_est.isoformat(),
         "source_ip": random.choice(SOURCE_IPS),
         "destination_ip": random.choice(DESTINATION_IPS),
         "destination_port": random.choice(DESTINATION_PORTS),
+        "lat": random.uniform(-90.0, 90.0),
+        "long": random.uniform(-180.0, 180.0),
         "protocol": random.choice(PROTOCOLS),
         "bytes_sent": random.randint(1_000, 100_000_000),
         "bytes_received": random.randint(1_000, 50_000),
