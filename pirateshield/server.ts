@@ -83,7 +83,7 @@ app.get('/', (req, res) => {
         ${events.length === 0 ? '<p style="color: #999;">No events have been created yet, "Add 5 Events" to generate data</p>' : 
           events.map(e => `
             <div class="event">
-              </strong${e.user_id} | <strong>${e.event_id}</strong> - ${e.timestamp}<br>
+              <strong>${e.user_id}</strong> | <strong>${e.event_id}</strong> - ${e.timestamp}<br>
               ${e.source_ip} → ${e.destination_ip}:${e.destination_port} (${e.protocol}) | [${e.lat}, ${e.long}]<br>
               Device: ${e.device_id} | Sent: ${e.bytes_sent.toLocaleString()} | Received: ${e.bytes_received.toLocaleString()}
             </div>
