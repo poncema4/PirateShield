@@ -11,15 +11,19 @@ const app = express();
 const PORT = 3000;
 
 interface NetworkEvent {
+  user_id: string;
   event_id: string;
   timestamp: string;
   source_ip: string;
   destination_ip: string;
   destination_port: number;
+  lat: number;
+  long: number;
   protocol: string;
   bytes_sent: number;
   bytes_received: number;
   device_id: string;
+  user_known_devices: string[];
   event_type: string;
 }
 
@@ -80,9 +84,10 @@ app.get('/', (req, res) => {
         ${events.length === 0 ? '<p style="color: #999;">No events have been created yet, "Add 5 Events" to generate data</p>' : 
           events.map(e => `
             <div class="event">
-              <strong>${e.event_id}</strong> - ${e.timestamp}<br>
-              ${e.source_ip} → ${e.destination_ip}:${e.destination_port} (${e.protocol})<br>
-              Device: ${e.device_id} | Sent: ${e.bytes_sent.toLocaleString()} | Received: ${e.bytes_received.toLocaleString()}
+              <strong>${e.user_id}</strong> | <strong>${e.event_id}</strong> - ${e.timestamp}<br>
+              ${e.source_ip} → ${e.destination_ip}:${e.destination_port} (${e.protocol}) | [${e.lat}, ${e.long}]<br>
+              Device: ${e.device_id} | Sent: ${e.bytes_sent.toLocaleString()} | Received: ${e.bytes_received.toLocaleString()}<br>
+              User Known Devices: ${e.user_known_devices}
             </div>
           `).join('')
         }
