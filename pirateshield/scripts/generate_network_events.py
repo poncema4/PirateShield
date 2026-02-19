@@ -21,12 +21,17 @@ DESTINATION_PORTS = [80, 443, 8080, 1080, 1194]
 PROTOCOLS = ["TCP", "UDP"]
 DEVICES = ["host-A", "host-B", "host-C"]
 USERS = ["student1", "teacher2", "it_staff3"]
+KNOWN_USER_DEVICES = {"student1": set(), "teacher2": set(), "it_staff3": set()}
 
 def generate_event(base_time_est, index):
     event_time_est = base_time_est + timedelta(seconds=index * 5)
 
+    user = random.choice(USERS)
+    device_id = random.choice(DEVICES)
+    KNOWN_USER_DEVICES[user].add(device_id)
+
     return {
-        "user_id": random.choice(USERS),
+        "user_id": user,
         "event_id": str(uuid.uuid4()),
         "timestamp": event_time_est.isoformat(),
         "source_ip": random.choice(SOURCE_IPS),
@@ -37,7 +42,8 @@ def generate_event(base_time_est, index):
         "protocol": random.choice(PROTOCOLS),
         "bytes_sent": random.randint(1_000, 100_000_000),
         "bytes_received": random.randint(1_000, 50_000),
-        "device_id": random.choice(DEVICES),
+        "device_id": device_id,
+        "user_known_devices": list(KNOWN_USER_DEVICES[user]),
         "event_type": "network_connection"
     }
 

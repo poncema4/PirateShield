@@ -23,6 +23,7 @@ interface NetworkEvent {
   bytes_sent: number;
   bytes_received: number;
   device_id: string;
+  user_known_devices: string[];
   event_type: string;
 }
 
@@ -85,7 +86,8 @@ app.get('/', (req, res) => {
             <div class="event">
               <strong>${e.user_id}</strong> | <strong>${e.event_id}</strong> - ${e.timestamp}<br>
               ${e.source_ip} → ${e.destination_ip}:${e.destination_port} (${e.protocol}) | [${e.lat}, ${e.long}]<br>
-              Device: ${e.device_id} | Sent: ${e.bytes_sent.toLocaleString()} | Received: ${e.bytes_received.toLocaleString()}
+              Device: ${e.device_id} | Sent: ${e.bytes_sent.toLocaleString()} | Received: ${e.bytes_received.toLocaleString()}<br>
+              User Known Devices: ${e.user_known_devices}
             </div>
           `).join('')
         }

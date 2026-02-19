@@ -9,16 +9,17 @@ DATA_FILE = Path(__file__).resolve().parents[2] / "data" / "synthetic_network_ev
 with open(DATA_FILE, "r") as file:
     networkEvents = json.load(file)
 
-def getLastTwoLogins(events: json, userID: str):
+def getLastTwoLogins(events: list[dict], userID: str):
     userEvents = [event for event in events if event["user_id"] == userID]
     userEvents.sort(key=lambda event: datetime.fromisoformat(event["timestamp"]))
 
     if len(userEvents) >= 2:
         return userEvents[-2], userEvents[-1]
+    
     return None
 
 # Using the Haversine formula to compute distance between two lat/long points
-def computeDistance(prevLogin, currLogin) -> int:    
+def computeDistance(prevLogin: dict, currLogin: dict) -> int:    
     latDistance = (currLogin["lat"] - prevLogin["lat"]) * math.pi / 180.0
     longDistance = (currLogin["long"] - prevLogin["long"]) * math.pi / 180.0
 
@@ -60,8 +61,8 @@ def detectImpossibleTravel(userID: str, speedThreshold=1000) -> bool:
 
 def test_getLastTwoLogins() -> None:
     prevLogin1, currLogin1 = getLastTwoLogins(networkEvents, "teacher2")
-    assert prevLogin1 != None
-    assert currLogin1 != None
+    assert prevLogin1 is not None
+    assert currLogin1 is not None
     assert prevLogin1["user_id"] == "teacher2"
     assert currLogin1["user_id"] == "teacher2"
 
@@ -73,6 +74,6 @@ def test_computeDistance() -> None:
     assert abs(distance - 3936) < 10  # Approximate distance in km
 
 def test_detectImpossibleTravel() -> None:
-    assert detectImpossibleTravel("teacher2") == True
-    assert detectImpossibleTravel("student1") == True
+    assert detectImpossibleTravel("teacher2")
+    assert detectImpossibleTravel("student1")
     

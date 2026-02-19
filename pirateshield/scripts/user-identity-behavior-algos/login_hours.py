@@ -6,7 +6,7 @@ DATA_FILE = Path(__file__).resolve().parents[2] / "data" / "synthetic_network_ev
 with open(DATA_FILE, "r") as file:
     networkEvents = json.load(file)
 
-def getLastTwoLogins(events: json, userID: str):
+def getLastLogin(events: list[dict], userID: str):
     userEvents = [event for event in events if event["user_id"] == userID]
     userEvents.sort(key=lambda event: datetime.fromisoformat(event["timestamp"]))
 
@@ -15,8 +15,8 @@ def getLastTwoLogins(events: json, userID: str):
     
     return userEvents[-1]
     
-def detectLoginHours(userID: str, startHour: int, endHour: int) -> bool:
-    login = getLastTwoLogins(networkEvents, userID)
+def detectLoginHours(userID: str, startHour=6, endHour=22) -> bool:
+    login = getLastLogin(networkEvents, userID)
 
     if not login:
         return False
@@ -31,8 +31,8 @@ def detectLoginHours(userID: str, startHour: int, endHour: int) -> bool:
 
 # Tests
 def test_getLastLogin() -> None:
-    login1 = getLastTwoLogins(networkEvents, "teacher2")
-    assert login1 != None
+    login1 = getLastLogin(networkEvents, "teacher2")
+    assert login1 is not None
     assert login1["user_id"] == "teacher2"
 
 def test_detectLoginHours() -> None:
