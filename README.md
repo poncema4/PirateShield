@@ -48,3 +48,12 @@ Open your browser and go to:
 ```
 http://localhost:3000
 ```
+
+Install the following extension:
+![alt text](image1.png)
+
+Click this in order to set and connect to:
+```
+pirateshield.db
+```
+![alt text](image2.png)
