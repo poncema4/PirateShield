@@ -93,5 +93,100 @@
       "host-D"
     ],
     "event_type": "vpn_connection"
+  },
+  {
+    "user_id": "student1",
+    "event_id": "14cedb17-e169-43df-9737-5cc82261af71",
+    "timestamp": "2026-02-26T13:24:19.058916-05:00",
+    "source_ip": "10.0.0.5",
+    "destination_ip": "185.220.101.1",
+    "destination_port": 22,
+    "lat": 76.592098,
+    "long": 168.926901,
+    "protocol": "TCP",
+    "bytes_sent": 21369,
+    "bytes_received": 27245,
+    "device_id": "host-A",
+    "user_known_devices": [
+      "host-A",
+      "host-B"
+    ],
+    "event_type": "brute_force"
+  },
+  {
+    "user_id": "it_staff3",
+    "event_id": "f93c3ee3-730c-4a9f-90e0-6bcfcfc000bd",
+    "timestamp": "2026-02-26T13:24:24.058916-05:00",
+    "source_ip": "10.0.0.12",
+    "destination_ip": "203.0.113.45",
+    "destination_port": 21,
+    "lat": 34.540104,
+    "long": -149.268967,
+    "protocol": "TCP",
+    "bytes_sent": 6286103,
+    "bytes_received": 38049,
+    "device_id": "host-C",
+    "user_known_devices": [
+      "host-C",
+      "host-D"
+    ],
+    "event_type": "file_transfer"
+  },
+  {
+    "user_id": "student1",
+    "event_id": "10e45b36-dfdb-4855-8085-c62764cb8134",
+    "timestamp": "2026-02-26T13:24:29.058916-05:00",
+    "source_ip": "10.0.0.12",
+    "destination_ip": "198.51.100.77",
+    "destination_port": 3389,
+    "lat": 29.197783,
+    "long": 140.692823,
+    "protocol": "TCP",
+    "bytes_sent": 256,
+    "bytes_received": 17091,
+    "device_id": "host-A",
+    "user_known_devices": [
+      "host-A",
+      "host-B"
+    ],
+    "event_type": "port_scan"
+  },
+  {
+    "user_id": "student1",
+    "event_id": "47f0ccca-fc26-45cc-ba9c-c5c947e61c4c",
+    "timestamp": "2026-02-26T13:24:34.058916-05:00",
+    "source_ip": "10.0.0.9",
+    "destination_ip": "198.51.100.77",
+    "destination_port": 6667,
+    "lat": -1.457658,
+    "long": 176.152493,
+    "protocol": "TCP",
+    "bytes_sent": 4038111,
+    "bytes_received": 43840,
+    "device_id": "host-A",
+    "user_known_devices": [
+      "host-A",
+      "host-B"
+    ],
+    "event_type": "malware"
+  },
+  {
+    "user_id": "it_staff3",
+    "event_id": "7646f50a-a6af-49c4-b3ed-2bf3c73a726c",
+    "timestamp": "2026-02-26T13:24:39.058916-05:00",
+    "source_ip": "10.0.0.9",
+    "destination_ip": "91.108.4.1",
+    "destination_port": 80,
+    "lat": -72.249753,
+    "long": 67.273075,
+    "protocol": "TCP",
+    "bytes_sent": 391760,
+    "bytes_received": 17388,
+    "device_id": "host-D",
+    "user_known_devices": [
+      "host-C",
+      "host-D"
+    ],
+    "event_type": "network_connection"
   }
 ]
