@@ -9,7 +9,6 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-
 # Path for the json file 
 BASE_DIR = Path(__file__).resolve().parents[1]
 OUTPUT_FILE = BASE_DIR / "data" / "synthetic_device_events.json"
