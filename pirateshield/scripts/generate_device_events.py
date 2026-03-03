@@ -3,6 +3,7 @@ program that pretends to be a computer or Chromebook
 and reports fake device activity, so PirateShield can be tested
 without installing anything on real student devices
 """
+import sys
 import json
 import random
 import uuid
@@ -126,7 +127,8 @@ def generate_event(base_time_est, index):
         }
 
 
-def main(count: int = 50):  # can change count for how many outputs
+def main(count: int = 5):  # can change count for how many outputs
+    count = int(sys.argv[1]) if len(sys.argv) > 1 else count
     # load existing events (if present)
     existing = []
     if OUTPUT_FILE.exists():
