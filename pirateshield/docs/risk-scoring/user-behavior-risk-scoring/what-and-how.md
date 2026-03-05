@@ -6,8 +6,6 @@ The research papers will go over of how for the methods of contextual risk scori
 
 ## Approach 1 From: Yun, T. & Min, M. (2025). MITRE ATT&CK-Driven Threat Analysis for Edge-IoT Environment and a Quantitative Risk Scoring Model. Computer Modeling in Engineering & Sciences, 145(2).
 
-![alt text](image-4.png)
-
 **What It Does** 
 Provides a lightweight, quantitative risk scoring model that ranks cyberattack types by overall risk using four independently measured factors, enabling prioritization of threats without expensive commercial tools.
 
@@ -31,6 +29,8 @@ Combines four weighted components into a single additive formula: **RiskScore = 
     • Produces a static risk ranking, not real-time monitoring — doesn't track live traffic in and out of the network
 
 ## Approach 2 From: Anomaly detection in heterogeneous cybersecurity data by S.A. Okolie, C.A. Amadi, J.N. Odii, E.C. Nwokorie, U․C Onyemauche (2025)
+
+![alt text](./images/image-4.png)
 
 **What It Does**
 Anomaly detection, which does the process of specifically identifying data points, patterns, or behaviors that deviate significantly from the norm using a dataset. These deviations, or anomalies can signify errors, inefficiencies, or potential threats. It goes over many types of data sources, including network traffic, system logs, user behavior, and endpoint telemetry (we'll just stick with user behavior for this context).
@@ -66,11 +66,11 @@ Uses a standard and hybrid approach for anomaly detection. The standard anomaly 
 4. **Machine Learning Ingestion**
 "In addition to statistical methods, machine learning algorithms enhance anomaly detection capabilities. Common approaches include:"
     - **Clustering:** "Techniques such as K-Means or DBSCAN is possible to categorize analogous data points and identify anomalies as those that do not align properly with any cluster."
-    - **Supervised Learning:** "If labelled data is available, algorithms like Support Vector Machines (SVM) can be trained to classify normal vs. anomalous behaviour. The SVM model can be expressed as: ![alt text](image.png) subject to ![alt text](image-1.png) where C is a regularization parameter, mm is the number of training samples, and ξi are slack variables."
+    - **Supervised Learning:** "If labelled data is available, algorithms like Support Vector Machines (SVM) can be trained to classify normal vs. anomalous behaviour. The SVM model can be expressed as: ![alt text](./images/image.png) subject to ![alt text](./images/image-1.png) where C is a regularization parameter, mm is the number of training samples, and ξi are slack variables."
 5. **Optimization Techniques** 
-"To improve the efficiency and accuracy of anomaly detection sys­tems, optimization techniques are often employed. For instance, genetic algorithms or particle swarm optimization can be used to find optimal thresholds for detecting anomalies dynamically. The optimization problem can be formulated as: ![alt text](image-2.png) where TPR is the true positive rate and FPR is the false positive rate, and w₁,w₂ are weights representing their importance."
+"To improve the efficiency and accuracy of anomaly detection sys­tems, optimization techniques are often employed. For instance, genetic algorithms or particle swarm optimization can be used to find optimal thresholds for detecting anomalies dynamically. The optimization problem can be formulated as: ![alt text](./images/image-2.png) where TPR is the true positive rate and FPR is the false positive rate, and w₁,w₂ are weights representing their importance."
 6. **Dynamic Learning and Adaptation**
-"Anomaly detection systems must adapt to new data continuously. This involves updating the model parameters based on incoming data streams: ![alt text](image-3.png) where L(θ) is the loss function that quantifies prediction errors and η is the learning rate."
+"Anomaly detection systems must adapt to new data continuously. This involves updating the model parameters based on incoming data streams: ![alt text](./images/image-3.png) where L(θ) is the loss function that quantifies prediction errors and η is the learning rate."
 
 ### Hybrid Approach
 
