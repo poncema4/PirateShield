@@ -56,17 +56,17 @@ Uses a standard and hybrid approach for anomaly detection. The standard anomaly 
 ### Techniques for Anomaly Detection
 1. **Data Representation**
 "Each data point can be illustrated as a feature vector: X_i = [f_1 , f_2 , …, f_n ] where ƒj represents the features derived from the data (e.g., network traffic metrics, user behaviour statistics)." Extraction from the feature vector involves selecting relevant characteristics from raw cybersecurity data (includes user behavior) and encodes them into a structured numerical format for machine learning models. The key steps in feature extraction and representation are:
-    a. **Data preprocessing** involving **normalization and scaling**
-    b. **Feature extraction from different data sources** including **user behavior features** (e.g., from authentication logs)
-    c. **Feature vector representation** which is after extracting features, being represented as a numerical vector **Xi = F1, F2 , F3, …, Fn**. "Each Fj represents a feature extracted from the data source. The feature vector Xi is used as input for machine learning models such as Random Forest, SVM, Deep Learning models, or Anomaly Detection algorithms."
+- **Data preprocessing** involving **normalization and scaling**
+- **Feature extraction from different data sources** including **user behavior features** (e.g., from authentication logs)
+- **Feature vector representation** which is after extracting features, being represented as a numerical vector **Xi = F1, F2 , F3, …, Fn**. "Each Fj represents a feature extracted from the data source. The feature vector Xi is used as input for machine learning models such as Random Forest, SVM, Deep Learning models, or Anomaly Detection algorithms."
 2. **Baseline Behavior Modeling**
 "Anomaly detection typically starts with establishing a baseline of normal behaviour using historical data. This can be modelled using statistical distributions. For instance, if the data follows a Gaussian distribution: **X ∼ N(μ, σ^2)** where μ is the mean and σ² is the variance of the normal behaviour."
 3. **Anomaly Detection Function**
 "The core of the anomaly detection model is a function that identifies anomalies based on deviations from the established baseline. This function can be defined using a z-score method: **Z = (x − μ)/σ**. A threshold can be set (e.g., ∣z∣ > 3) to classify points as anomalies.
 4. **Machine Learning Ingestion**
 "In addition to statistical methods, machine learning algorithms enhance anomaly detection capabilities. Common approaches include:"
-    - **Clustering:** "Techniques such as K-Means or DBSCAN is possible to categorize analogous data points and identify anomalies as those that do not align properly with any cluster."
-    - **Supervised Learning:** "If labelled data is available, algorithms like Support Vector Machines (SVM) can be trained to classify normal vs. anomalous behaviour. The SVM model can be expressed as: ![alt text](./images/image.png) subject to ![alt text](./images/image-1.png) where C is a regularization parameter, mm is the number of training samples, and ξi are slack variables."
+- **Clustering:** "Techniques such as K-Means or DBSCAN is possible to categorize analogous data points and identify anomalies as those that do not align properly with any cluster."
+- **Supervised Learning:** "If labelled data is available, algorithms like Support Vector Machines (SVM) can be trained to classify normal vs. anomalous behaviour. The SVM model can be expressed as: ![alt text](./images/image.png) subject to ![alt text](./images/image-1.png) where C is a regularization parameter, mm is the number of training samples, and ξi are slack variables."
 5. **Optimization Techniques** 
 "To improve the efficiency and accuracy of anomaly detection sys­tems, optimization techniques are often employed. For instance, genetic algorithms or particle swarm optimization can be used to find optimal thresholds for detecting anomalies dynamically. The optimization problem can be formulated as: ![alt text](./images/image-2.png) where TPR is the true positive rate and FPR is the false positive rate, and w₁,w₂ are weights representing their importance."
 6. **Dynamic Learning and Adaptation**
