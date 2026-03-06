@@ -4,33 +4,12 @@
 
 The research papers will go over of how for the methods of contextual risk scoring, explaining the strengths and limitations for PirateShield.
 
-## Approach 1 From: Yun, T. & Min, M. (2025). MITRE ATT&CK-Driven Threat Analysis for Edge-IoT Environment and a Quantitative Risk Scoring Model. Computer Modeling in Engineering & Sciences, 145(2).
+## Approach 1 From: MITRE ATT&CK-Driven Threat Analysis for Edge-IoT Environment and a Quantitative Risk Scoring Model by Yun, T. & Min, M. (2025). 
 
-**What It Does** 
-Provides a lightweight, quantitative risk scoring model that ranks cyberattack types by overall risk using four independently measured factors, enabling prioritization of threats without expensive commercial tools.
-
-**How It Works** 
-Combines four weighted components into a single additive formula: **RiskScore = MIS × 0.35 + FS × 0.30 + DS × 0.25 + DifS × 0.10**
-    • MIS (MITRE Impact Score): CVSS v3.1 severity scores normalized to 0–1 
-    • FS (Frequency Score): Attack prevalence in network data, normalized using Laplace smoothing and log transformation 
-    • DS (Detection Score): Computed as 1 − recall from a DNN classifier; higher score = harder to detect 
-    • DifS (Difficulty Score): Nonlinear score based on how many Cyber Kill Chain stages an attack traverses 
-
-**Strengths**
-    • Additive structure is simple, explainable, and doesn't require expensive infrastructure 
-    • CVSS-based impact scoring is free via NIST's National Vulnerability Database 
-    • The four-component framework is flexible and could be adapted with K-12-specific inputs 
-    • Robustness validation via Spearman's and Kendall's correlation adds academic credibility 
-
-**Limitations**
-    • Built for Edge-IoT/IIoT environments, not K-12 education networks — frequency and severity weights won't transfer directly 
-    • The DNN-based Detection Score requires ML expertise and computational resources that under-resourced districts don't have 
-    • Frequency Score requires structured, labeled network traffic logs that many school districts lack 
-    • Produces a static risk ranking, not real-time monitoring — doesn't track live traffic in and out of the network
 
 ## Approach 2 From: Anomaly detection in heterogeneous cybersecurity data by S.A. Okolie, C.A. Amadi, J.N. Odii, E.C. Nwokorie, U․C Onyemauche (2025)
 
-![alt text](./images/image-4.png)
+![alt text](./images/Anomaly-Detection-in-Heterogeneous-Cybersecurity-Data/metrics-table-from-heterogenous-data.png)
 
 **What It Does**
 Anomaly detection, which does the process of specifically identifying data points, patterns, or behaviors that deviate significantly from the norm using a dataset. These deviations, or anomalies can signify errors, inefficiencies, or potential threats. It goes over many types of data sources, including network traffic, system logs, user behavior, and endpoint telemetry (we'll just stick with user behavior for this context).
@@ -53,6 +32,12 @@ Uses a standard and hybrid approach for anomaly detection. The standard anomaly 
     - **Generative Adversarial Networks (GANs):** "Anomalies are detected based on how well the discriminator can distinguish generated data
     from real data."
 
+### Types of Anomaly
+1. **Point Anomalies:** "Single data points that deviate significantly from the rest of the dataset (e.g., a sudden spike in login attempts)."
+2. **Contextual Anomalies:** "Data points that are anomalous in a specific context but normal in another (e.g., high data transfer during off-hours)."
+3. **Collective Anomalies:** "Groups of data points that together deviate from expected behaviour, even if individual points may not be
+anomalous."
+
 ### Techniques for Anomaly Detection
 1. **Data Representation**
 "Each data point can be illustrated as a feature vector: X_i = [f_1 , f_2 , …, f_n ] where ƒj represents the features derived from the data (e.g., network traffic metrics, user behaviour statistics)." Extraction from the feature vector involves selecting relevant characteristics from raw cybersecurity data (includes user behavior) and encodes them into a structured numerical format for machine learning models. The key steps in feature extraction and representation are:
@@ -66,13 +51,18 @@ Uses a standard and hybrid approach for anomaly detection. The standard anomaly 
 4. **Machine Learning Ingestion**
 "In addition to statistical methods, machine learning algorithms enhance anomaly detection capabilities. Common approaches include:"
 - **Clustering:** "Techniques such as K-Means or DBSCAN is possible to categorize analogous data points and identify anomalies as those that do not align properly with any cluster."
-- **Supervised Learning:** "If labelled data is available, algorithms like Support Vector Machines (SVM) can be trained to classify normal vs. anomalous behaviour. The SVM model can be expressed as: ![alt text](./images/image.png) subject to ![alt text](./images/image-1.png) where C is a regularization parameter, mm is the number of training samples, and ξi are slack variables."
+- **Supervised Learning:** "If labelled data is available, algorithms like Support Vector Machines (SVM) can be trained to classify normal vs. anomalous behaviour. The SVM model can be expressed as: ![alt text](./images/Anomaly-Detection-in-Heterogeneous-Cybersecurity-Data/SVM-model-from-equation.png) subject to ![alt text](./images/Anomaly-Detection-in-Heterogeneous-Cybersecurity-Data/SVM-model-to-equation.png) where C is a regularization parameter, mm is the number of training samples, and ξi are slack variables."
 5. **Optimization Techniques** 
-"To improve the efficiency and accuracy of anomaly detection sys­tems, optimization techniques are often employed. For instance, genetic algorithms or particle swarm optimization can be used to find optimal thresholds for detecting anomalies dynamically. The optimization problem can be formulated as: ![alt text](./images/image-2.png) where TPR is the true positive rate and FPR is the false positive rate, and w₁,w₂ are weights representing their importance."
+"To improve the efficiency and accuracy of anomaly detection sys­tems, optimization techniques are often employed. For instance, genetic algorithms or particle swarm optimization can be used to find optimal thresholds for detecting anomalies dynamically. The optimization problem can be formulated as: ![alt text](./images/Anomaly-Detection-in-Heterogeneous-Cybersecurity-Data/optimization-formula.png) where TPR is the true positive rate and FPR is the false positive rate, and w₁,w₂ are weights representing their importance."
 6. **Dynamic Learning and Adaptation**
-"Anomaly detection systems must adapt to new data continuously. This involves updating the model parameters based on incoming data streams: ![alt text](./images/image-3.png) where L(θ) is the loss function that quantifies prediction errors and η is the learning rate."
+"Anomaly detection systems must adapt to new data continuously. This involves updating the model parameters based on incoming data streams: ![alt text](./images/Anomaly-Detection-in-Heterogeneous-Cybersecurity-Data/dynamic-learning-equation.png) where L(θ) is the loss function that quantifies prediction errors and η is the learning rate."
 
 ### Hybrid Approach
-
+1. **Statistical Analysis:** "Fit a statistical model and machine learning model to establish baseline behaviour. Calculate the residue" ![alt text](./images/Anomaly-Detection-in-Heterogeneous-Cybersecurity-Data/statistical-analysis-equation.png)
+2. **Feature Extraction:** "Train an autoencoder on the dataset to learn feature representations." Extract features for each observation as shown in this equation ![alt text](./images/Anomaly-Detection-in-Heterogeneous-Cybersecurity-Data/autoencoder-equation.png)
+3. **Anomaly Scoring:** "Combine statistical scores with ML predictions. Define a final anomaly score: ![alt text](./images/Anomaly-Detection-in-Heterogeneous-Cybersecurity-Data/final-anomaly-score.png) where w₁, w₂ are weights that balance contributions from statistical and
+ML components."
+4. **Thresholding:** "Set threshold for the final score. Classify as anomalous if: Si > T."
+5. **Evaluation Metrics:** Evaluate the performance of the hybrid model using metrics such as precision (Pr), recall (Rc), and F₁ -score (F₁s) as shown in![alt text](./images/Anomaly-Detection-in-Heterogeneous-Cybersecurity-Data/hybrid-model-metrics-equation.png) where: TP: True Positives, FP: False Positives and FN: False Negatives."
 
 
