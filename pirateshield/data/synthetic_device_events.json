@@ -71,5 +71,66 @@
     "baseline_cpu": 13.0,
     "duration_seconds": 505,
     "risk_score": 30
+  },
+  {
+    "event_id": "064d74ba-de03-4b81-9075-2a1a81ea19a8",
+    "timestamp": "2026-03-10T10:00:18.992124-05:00",
+    "device_id": "device-227fb191",
+    "device_type": "laptop",
+    "user": "student006",
+    "event_type": "process_start",
+    "process_name": "python",
+    "process_path": "/usr/bin/python",
+    "suspicious": false,
+    "risk_score": 0
+  },
+  {
+    "event_id": "68c08e69-1d77-4423-b494-9cb62443863d",
+    "timestamp": "2026-03-10T10:00:23.992124-05:00",
+    "device_id": "device-75bde599",
+    "device_type": "laptop",
+    "user": "student009",
+    "event_type": "process_start",
+    "process_name": "system",
+    "process_path": "/usr/bin/system",
+    "suspicious": false,
+    "risk_score": 0
+  },
+  {
+    "event_id": "8e14aa78-1177-4391-adea-317d4274c0a4",
+    "timestamp": "2026-03-10T10:00:28.992124-05:00",
+    "device_id": "device-49592659",
+    "device_type": "phone",
+    "user": "student015",
+    "event_type": "usb_event",
+    "usb_id": "USB-9497",
+    "action": "removed",
+    "new_executable_started": false,
+    "exe_path": null,
+    "risk_score": 0
+  },
+  {
+    "event_id": "791cdbae-3bc6-40b3-a894-e603f64fd79d",
+    "timestamp": "2026-03-10T10:00:33.992124-05:00",
+    "device_id": "device-c8b93887",
+    "device_type": "phone",
+    "user": "student007",
+    "event_type": "process_start",
+    "process_name": "chrome",
+    "process_path": "/usr/bin/chrome",
+    "suspicious": false,
+    "risk_score": 0
+  },
+  {
+    "event_id": "dd6a43bd-8a8b-47e0-8db8-7258be7b2e72",
+    "timestamp": "2026-03-10T10:00:38.992124-05:00",
+    "device_id": "device-6bb35d2e",
+    "device_type": "laptop",
+    "user": "student020",
+    "event_type": "process_start",
+    "process_name": "explorer",
+    "process_path": "/usr/bin/explorer",
+    "suspicious": false,
+    "risk_score": 0
   }
 ]
