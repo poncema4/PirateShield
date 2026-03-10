@@ -149,15 +149,15 @@ Administrators can review these alerts through the PirateShield interface to inv
 |Rule 1 - Role Violation (Student -> Admin Portal)| Yes | +40|
 |Rule 2 - Bulk Download (60 files)|Yes|+30|
 |Rule 3 - Off-Hours Sensitive Access| Yes | +20|
-|Rule 4 - Repeated Failed Attempts | No | +0 |
+|Rule 4 - Repeated Failed Attempts | No | +25 |
 
 ### Access Risk Score Calculation
 $$
 \begin{aligned}
-BAR &= (40 \times 1) + (30 \times 1) + (20 \times 1) + (25 \times 0) \\
-BAR &= 90 \\
+BAR &= (40 \times 1) + (30 \times 1) + (20 \times 1) + (25 \times 1) \\
+BAR &= 115 \\
 \text{Sensitivity} &= 1.2\times \ (\text{High}) \\
-FAR &= 90 \times 1.2 = 108 \\
+FAR &= 115 \times 1.2 = 138 \\
 \text{Classification} &= \text{Critical} \ (\geq 80)
 \end{aligned}
 $$
@@ -168,7 +168,7 @@ $$
 **ALERT: Unauthorized Access Attempt Detected**  
   
 Severity: Critical  
-Risk Score: 108  
+Risk Score: 138
   
 User: 95653  
 Role: Student  
