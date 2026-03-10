@@ -109,5 +109,100 @@
       "host-D"
     ],
     "event_type": "file_transfer"
+  },
+  {
+    "user_id": "student1",
+    "event_id": "7f6112f7-b4e6-442d-9c6a-3d7b0a4ea514",
+    "timestamp": "2026-03-10T10:00:16.878166-05:00",
+    "source_ip": "10.0.0.12",
+    "destination_ip": "198.51.100.77",
+    "destination_port": 80,
+    "lat": -55.205318,
+    "long": 73.704082,
+    "protocol": "TCP",
+    "bytes_sent": 204449,
+    "bytes_received": 17787,
+    "device_id": "host-B",
+    "user_known_devices": [
+      "host-A",
+      "host-B"
+    ],
+    "event_type": "network_connection"
+  },
+  {
+    "user_id": "student1",
+    "event_id": "eece4fbd-8b7d-4af9-9169-e04a498ae59b",
+    "timestamp": "2026-03-10T10:00:21.878166-05:00",
+    "source_ip": "10.0.0.22",
+    "destination_ip": "198.51.100.77",
+    "destination_port": 8080,
+    "lat": -84.846527,
+    "long": 46.537014,
+    "protocol": "TCP",
+    "bytes_sent": 228697,
+    "bytes_received": 18390,
+    "device_id": "host-A",
+    "user_known_devices": [
+      "host-A",
+      "host-B"
+    ],
+    "event_type": "network_connection"
+  },
+  {
+    "user_id": "teacher2",
+    "event_id": "4264e8be-1db7-4afc-9312-ec0f81a45343",
+    "timestamp": "2026-03-10T10:00:26.878166-05:00",
+    "source_ip": "10.0.0.22",
+    "destination_ip": "198.51.100.77",
+    "destination_port": 21,
+    "lat": -24.030601,
+    "long": -174.873298,
+    "protocol": "TCP",
+    "bytes_sent": 253851,
+    "bytes_received": 12476,
+    "device_id": "host-C",
+    "user_known_devices": [
+      "host-B",
+      "host-C"
+    ],
+    "event_type": "file_transfer"
+  },
+  {
+    "user_id": "teacher2",
+    "event_id": "cc319e40-ab15-46ed-ae52-dba65d01557f",
+    "timestamp": "2026-03-10T10:00:31.878166-05:00",
+    "source_ip": "10.0.0.22",
+    "destination_ip": "198.51.100.77",
+    "destination_port": 22,
+    "lat": -1.538968,
+    "long": 178.865099,
+    "protocol": "TCP",
+    "bytes_sent": 2733,
+    "bytes_received": 17813,
+    "device_id": "host-B",
+    "user_known_devices": [
+      "host-B",
+      "host-C"
+    ],
+    "event_type": "unusual_login"
+  },
+  {
+    "user_id": "teacher2",
+    "event_id": "943f8ab9-e725-4114-9b8a-f3070691d5f4",
+    "timestamp": "2026-03-10T10:00:36.878166-05:00",
+    "source_ip": "10.0.0.5",
+    "destination_ip": "8.8.8.8",
+    "destination_port": 21,
+    "lat": 86.227121,
+    "long": 15.256588,
+    "protocol": "TCP",
+    "bytes_sent": 5000706,
+    "bytes_received": 14218,
+    "device_id": "host-B",
+    "user_known_devices": [
+      "host-B",
+      "host-C"
+    ],
+    "event_type": "file_transfer"
   }
 ]
