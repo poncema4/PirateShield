@@ -132,5 +132,66 @@
     "process_path": "/usr/bin/explorer",
     "suspicious": false,
     "risk_score": 0
+  },
+  {
+    "event_id": "3129af40-6de2-4d57-b981-b7fac74819ac",
+    "timestamp": "2026-03-10T11:36:16.237763-05:00",
+    "device_id": "device-867f57c9",
+    "device_type": "school computer",
+    "user": "student012",
+    "event_type": "process_start",
+    "process_name": "cracktool",
+    "process_path": "/usr/bin/cracktool",
+    "suspicious": true,
+    "risk_score": 50
+  },
+  {
+    "event_id": "ed7e722a-7b17-4979-86ae-3863291096ca",
+    "timestamp": "2026-03-10T11:36:21.237763-05:00",
+    "device_id": "device-ce8082c2",
+    "device_type": "laptop",
+    "user": "student007",
+    "event_type": "process_start",
+    "process_name": "chrome",
+    "process_path": "/usr/bin/chrome",
+    "suspicious": false,
+    "risk_score": 0
+  },
+  {
+    "event_id": "52a6465d-eb52-4881-8f09-9a3e89dfc026",
+    "timestamp": "2026-03-10T11:36:26.237763-05:00",
+    "device_id": "device-fa84008c",
+    "device_type": "phone",
+    "user": "student017",
+    "event_type": "process_start",
+    "process_name": "edge",
+    "process_path": "/usr/bin/edge",
+    "suspicious": false,
+    "risk_score": 0
+  },
+  {
+    "event_id": "8ee791e9-9da9-4c66-b0a3-7cbead592a2f",
+    "timestamp": "2026-03-10T11:36:31.237763-05:00",
+    "device_id": "device-991d5ab5",
+    "device_type": "tablet",
+    "user": "student008",
+    "event_type": "usb_event",
+    "usb_id": "USB-7171",
+    "action": "removed",
+    "new_executable_started": false,
+    "exe_path": null,
+    "risk_score": 0
+  },
+  {
+    "event_id": "4fd07f65-5c60-4153-ac37-a943a73aa43b",
+    "timestamp": "2026-03-10T11:36:36.237763-05:00",
+    "device_id": "device-e4760562",
+    "device_type": "phone",
+    "user": "student016",
+    "event_type": "cpu_spike",
+    "cpu_percent": 41.0,
+    "baseline_cpu": 8.4,
+    "duration_seconds": 16,
+    "risk_score": 30
   }
 ]
