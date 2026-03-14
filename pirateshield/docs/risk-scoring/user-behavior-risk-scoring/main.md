@@ -61,9 +61,13 @@ Where:
 - $$n$$ is the number of bins (24 for hour of day, 7 for day of week)
 - $$w_i$$ is weight (historical visit count) of bin $$i$$
 - $$\Theta{_x} = \frac{2\pi{x}}{period}$$ is the angular position of the current value
-- $$\Theta{_x} = \frac{2\pi{x}}{n}$$ is the angular position of bin $$i$$
+- $$\Theta{_i} = \frac{2\pi{i}}{n}$$ is the angular position of bin $$i$$
+
+For the hours:
+- $$S_{\text{cyclic}}(11) = \frac{1}{2} \left( \frac{\sum_{i=1}^{24} w_11 \cdot \cos(\theta_11 - \theta_{w_11})}{\sum_{i=1}^{24} w_11} + 1 \right)$$
 
 ## Step 3. Apply the Sigmoid Transformation
 Using the sigmoid formula from Kwon et al. 
 
-$$\phi{Z} = \frac{1}{1 + e^{-k(Z - \mu)}}$$
+$$\phi{(Z)} = \frac{1}{1 + e^{-k(Z - \mu)}}$$
+
