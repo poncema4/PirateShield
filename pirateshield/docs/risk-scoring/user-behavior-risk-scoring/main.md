@@ -8,7 +8,7 @@ event = {
     student_id: "student_darin271",
     timestamp: "03-14-2026 11:10:23",
     day_of_the_week: "Saturday",
-    hour: 2,
+    hour: 11,
     is_school_hours: False,
     is_weekend: True,
     login_count_today: 3,
@@ -35,3 +35,16 @@ profile = {
 Using the formula from S.A. Okolie et al.
 
 $${Z} = \frac{x - \mu}{\sigma}$$
+
+1. Z_hour = (11 - 8.4) / 1.2 = 2.6 / 1.2 = 2.167
+
+2. Z_freq = (3 - 2.1) / 0.8 = 0.9 / 0.8 = 1.125
+
+3. Z_off = (1 - 0.04) / $\sqrt{0.04 * 0.96}$ = 0.96 / 0.192 = 5
+
+4. Z_weekend = (1 - 0.03) / $\sqrt{0.03 * 0.97}$ = 0.97 / 0.168 = 5.774
+
+**Note**: Z_off and Z_weekend rates are probabilities and we can only decide using True/False so we apply Bernoulli's Distribution to get the Z-Score.
+
+$${Z} = \frac{1 - r}{$\sqrt{r * (1 - r)}}
+
