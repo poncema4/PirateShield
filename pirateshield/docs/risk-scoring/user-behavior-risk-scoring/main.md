@@ -46,5 +46,5 @@ $${Z} = \frac{x - \mu}{\sigma}$$
 
 **Note**: Z_off and Z_weekend rates are probabilities and we can only decide using True/False so we apply Bernoulli's Distribution to get the Z-Score.
 
-$${Z} = \frac{1 - r}{$\sqrt{r * (1 - r)}}$$
+$${Z} = \frac{1 - r}{\sqrt{r * (1 - r)}}$$
 
