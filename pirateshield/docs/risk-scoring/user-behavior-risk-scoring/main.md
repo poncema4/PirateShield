@@ -63,6 +63,7 @@ Where:
 - $$\Theta{_x} = \frac{2\pi{x}}{period}$$ is the angular position of the current value
 - $$\Theta{_x} = \frac{2\pi{x}}{n}$$ is the angular position of bin $$i$$
 
-
-
 ## Step 3. Apply the Sigmoid Transformation
+Using the sigmoid formula from Kwon et al. 
+
+$$\phi{Z} = \frac{1}{1 + e^(-k(Z - \mu))}$$
