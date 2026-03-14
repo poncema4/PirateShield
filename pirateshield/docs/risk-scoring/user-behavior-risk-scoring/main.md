@@ -66,4 +66,4 @@ Where:
 ## Step 3. Apply the Sigmoid Transformation
 Using the sigmoid formula from Kwon et al. 
 
-$$\phi{Z} = \frac{1}{1 + e^(-k(Z - \mu))}$$
+$$\phi{Z} = \frac{1}{1 + e^{-k(Z - \mu)}}$$
