@@ -126,3 +126,5 @@ PirateShield doesn't need differential privacy infrastructure — we're not tran
 The paper acknowledges cold-start as a known challenge — when a user has no login history, device-centric approaches "require extensive data collection, particularly during the cold-start phase." While the paper doesn't fully solve it, it establishes that cold-start is a recognized problem in the RBA literature. For PirateShield we can cite this acknowledgment to justify our design decision to require a minimum 30-day baseline before anomaly scoring begins, rather than flagging every new student account as high risk by default.
 
 # Policy-driven contextual risk evaluation in OAuth 2.0 authentication frameworks for AI chatbot-based RPA systems
+
+# SoK: A Systematic Review of Context- and Behavior-Aware Adaptive Authentication in Mobile Environments
