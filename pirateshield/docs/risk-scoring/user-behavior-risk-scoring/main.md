@@ -3,6 +3,8 @@
 For every login, we compute the contextual risk score (abbreviated as CRS) between 0 and 1. This number reflects how anomalous the specific login is relative to the student's historical data. We then compare the CRS against known attack signature profiles to identify not just that something is wrong but what kind of attack it likely is.
 
 ## Step 1. Input Data
+Hamidreza Fereidouni et al. 
+
 ```
 event = {
     student_id: "student_darin271",
@@ -18,6 +20,8 @@ event = {
 
 }
 
+Note: Additional features can include User Agent (UA), Timezone & Language, Connection Type, RTT, Successful Login?, and Benign IP?
+
 profile = {
     average_hour: 8.4,
     deviation_hour: 1.2,
@@ -31,20 +35,25 @@ profile = {
 }
 ```
 
-## Step 2. Compute the Z-Scores
-Using the formula from S.A. Okolie et al.
+## Step 2. Compute Scores
+Using the Z-Score formula from S.A. Okolie et al.
 
 $${Z} = \frac{x - \mu}{\sigma}$$
 
-1. Z_hour = (11 - 8.4) / 1.2 = 2.6 / 1.2 = 2.167
+- Z_hour = (11 - 8.4) / 1.2 = 2.6 / 1.2 = 2.167
 
-2. Z_freq = (3 - 2.1) / 0.8 = 0.9 / 0.8 = 1.125
-
-3. Z_off = (1 - 0.04) / $\sqrt{0.04 * 0.96}$ = 0.96 / 0.192 = 5
-
-4. Z_weekend = (1 - 0.03) / $\sqrt{0.03 * 0.97}$ = 0.97 / 0.168 = 5.774
+- Z_freq = (3 - 2.1) / 0.8 = 0.9 / 0.8 = 1.125
 
 **Note**: Z_off and Z_weekend rates are probabilities and we can only decide using True/False so we apply Bernoulli's Distribution to get the Z-Score.
 
 $${Z} = \frac{1 - r}{\sqrt{r * (1 - r)}}$$
 
+- Z_off = (1 - 0.04) / $\sqrt{0.04 * 0.96}$ = 0.96 / 0.192 = 5
+
+- Z_weekend = (1 - 0.03) / $\sqrt{0.03 * 0.97}$ = 0.97 / 0.168 = 5.774
+
+Using the weighted circular distance from Hamidreza Fereidouni et al. 
+
+$$S_{\text{cyclic}}(x) = \frac{1}{2} \left( \frac{\sum_{i=1}^{n} w_i \cdot \cos(\theta_x - \theta_i)}{\sum_{i=1}^{n} w_i} + 1 \right)$$
+
+## Step 3. Apply the Sigmoid Transformation
