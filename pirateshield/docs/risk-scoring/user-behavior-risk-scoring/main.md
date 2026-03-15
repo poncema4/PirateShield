@@ -90,7 +90,7 @@ $$\phi{(Z_{weekend})} = \frac{1}{1 + e^{-1(5.774 - 2)}} = 0.9775$$
 ## Step 4. Compute Weighted Composite Score
 Using the weighted composite score formula from Okolie et al. combined with Yun et al.
 
-$$S_raw = w_1\phi(Z_{off}) + w_2\phi(Z_{hour}) + w_3\phi(Z_{freq}) + w_4\phi(Z_{weekend})$$
+$$S_{raw} = w_1\phi(Z_{off}) + w_2\phi(Z_{hour}) + w_3\phi(Z_{freq}) + w_4\phi(Z_{weekend})$$
 
 Where:
 - $$w_1 = 0.35$$
