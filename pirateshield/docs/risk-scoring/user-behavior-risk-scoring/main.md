@@ -98,7 +98,7 @@ Where:
 - $$w_3 = 0.20$$
 - $$w_4 = 0.20$$
 
-$$S_{raw} = 0.35\phi(0.9525) + 0.25\phi(0.5416) + 0.20\phi(0.2942) + 0.20\phi(0.9775)$$
+$$S_{raw} = 0.35(0.9525) + 0.25(0.5416) + 0.20(0.2942) + 0.20(0.9775)$$
 $$S_{raw} = 0.7231$$
 
 ## Step 5. Apply Contextual Bonuses (Optional)
@@ -113,19 +113,37 @@ $$S_{raw} = 0.7231 + 0.20 + 0.05$$
 $$S_{raw} = 0.9731$$
 
 ## Step 6. Assess Risk Score
+Using the idea from Baseri et al.
 
 Based on $$S_{raw}$$:
 
-If $$0.0 >= S_{raw} <= 0.4$$:
+If $$0.0 <= S_{raw} <= 0.4$$:
 - Low risk -> Simple authentication (standard login proceeds)
 
-Else if $$0.4 > S_{raw} <= 0.7$$:
+Else if $$0.4 < S_{raw} <= 0.7$$:
 - Medium risk -> More steps (additional verification)
 
-Else if $$0.7 > S_{raw} < 0.9$$:
+Else if $$0.7 < S_{raw} < 0.9$$:
 - High risk -> Advanced authentication (block or escalate)
 
-Else (meaning $$0.9 >= S_{raw} <= 1$$):
+Else (meaning $$0.9 <= S_{raw} <= 1$$):
 - Critical risk -> Immediate escalation 
+
+## Edge Cases and Questions
+
+1. What if the student's data was skewed? (addressed by Okolie et al.)
+For example, a student logs in 10 times on Monday and once every other day.
+
+According to the paper, it states that the Z-score thresholds assume normally distributed data and offers an alternative:
+- Setting a threshold at 1.5 times the interquartile range
+
+2. How can we handle a case where if the student is new or doesn't have the historical data? (Cold-start phase addressed by Baseri et al.)
+- No data -> no risk scoring
+
+According to the paper, instead of flagging new users with no history as high-risk, assign to peer cluster and use cluster aggregate baseline until individual baseline is established.
+
+3. Student's behavior can change legitimately over time, but how can we distinguish this from a malicious user who follows the same procedure? Follow up: how can decrease false positives for this if it's legitimate?
+
+And more to think about
 
 
