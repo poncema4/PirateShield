@@ -75,23 +75,54 @@ $$\Theta{_11} = \frac{2\pi{11}}{period}$$
 $$\Theta{_i} = \frac{2\pi{i}}{24}$$
 $$S_{\text{cyclic}}(x) = \frac{1}{2} \left( \frac{\sum_{i=1}^{n} w_i \cdot \cos(\theta_x - \theta_i)}{\sum_{i=1}^{n} w_i} + 1 \right)$$
 
-
-[TODO]: Fill in example for sigmoid transformation
 ## Step 3. Apply the Sigmoid Transformation
 Using the sigmoid formula from Kwon et al. 
 
 $$\phi{(Z)} = \frac{1}{1 + e^{-k(Z - \mu)}}$$
 
-$$\phi{(Z_hour)} = \frac{1}{1 + e^{-k(Z - \mu)}}$$
-$$\phi{(Z_freq)} = \frac{1}{1 + e^{-k(Z - \mu)}}$$
-$$\phi{(Z_off)} = \frac{1}{1 + e^{-k(Z - \mu)}}$$
-$$\phi{(Z_weekend)} = \frac{1}{1 + e^{-k(Z - \mu)}}$$
+We set $$k = 1$$ and $$\mu = 2$$ as our baseline parameters, following the two-sigma anomaly convention standard in statistical anomaly detection.
 
+$$\phi{(Z_hour)} = \frac{1}{1 + e^{-1(2.167 - 2)}} = 0.5416$$
+$$\phi{(Z_freq)} = \frac{1}{1 + e^{-1(1.125 - 2)}} = 0.2942$$
+$$\phi{(Z_off)} = \frac{1}{1 + e^{-1(5 - 2)}} = 0.9525$$
+$$\phi{(Z_weekend)} = \frac{1}{1 + e^{-1(5.774 - 2)}} = 0.9775$$
 
-[TODO]: Fill in example for weighted composite score
 ## Step 4. Compute Weighted Composite Score
-Using the weighted composite score formula from Okolie et al.
+Using the weighted composite score formula from Okolie et al. combined with Yun et al.
 
-$$S_raw = w_1\phi(Z_hour) + w_2\phi(Z_freq) + w_3\phi(Z_off) + w_4\phi(Z_weekend)$$
+$$S_raw = w_1\phi(Z_off) + w_2\phi(Z_hour) + w_3\phi(Z_freq) + w_4\phi(Z_weekend)$$
 
-$$S_raw = ...$$
+Where:
+- $$w_1 = 0.35$$
+- $$w_2 = 0.25$$
+- $$w_3 = 0.20$$
+- $$w_4 = 0.20$$
+
+$$S_raw = 0.35\phi(0.9525) + 0.25\phi(0.5416) + 0.20\phi(0.2942) + 0.20\phi(0.9775)$$
+$$S_raw = 0.7231$$
+
+## Step 5. Apply Contextual Bonuses (Optional)
+```
+$$n$$ failed attempts = +n*0.05
+unknown device = +0.20
+unknown ip = +0.20
+login (12am-5am EST) = +0.20
+etc.
+```
+$$S_raw = 0.7231 + 0.20 + 0.05$$
+$$S_raw = 0.9731$$
+
+## Step 6. Assess Risk Score
+
+Based on $$S_raw$$:
+
+If $$0.0 >= S_raw <= 0.4$$:
+- Low risk -> Simple authentication (standard login proceeds)
+Else if $$0.4 > S_raw <= 0.7$$:
+- Medium risk -> More steps (additional verification)
+Else if $$0.7 > S_raw < 0.9$$:
+- High risk -> Advanced authentication (block or escalate)
+Else (meaning $$0.9 >= S_raw <= 1$$):
+- Critical risk -> Immediate escalation 
+
+
