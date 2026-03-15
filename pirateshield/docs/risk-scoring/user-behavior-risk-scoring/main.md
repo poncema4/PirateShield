@@ -114,18 +114,18 @@ $$S_{raw} = 0.9731$$
 
 ## Step 6. Assess Risk Score
 
-Based on $$S_raw$$:
+Based on $$S_{raw}$$:
 
-If $$0.0 >= S_raw <= 0.4$$:
+If $$0.0 >= S_{raw} <= 0.4$$:
 - Low risk -> Simple authentication (standard login proceeds)
 
-Else if $$0.4 > S_raw <= 0.7$$:
+Else if $$0.4 > S_{raw} <= 0.7$$:
 - Medium risk -> More steps (additional verification)
 
-Else if $$0.7 > S_raw < 0.9$$:
+Else if $$0.7 > S_{raw} < 0.9$$:
 - High risk -> Advanced authentication (block or escalate)
 
-Else (meaning $$0.9 >= S_raw <= 1$$):
+Else (meaning $$0.9 >= S_{raw} <= 1$$):
 - Critical risk -> Immediate escalation 
 
 
