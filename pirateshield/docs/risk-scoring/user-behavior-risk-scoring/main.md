@@ -68,9 +68,11 @@ Where:
 Let's say if our hour bins were: [0,0,0,0,0,0,0,2,8,12,7,3,0,0,0,0,1,0,0,0,0,0,0,0]
 
 **1st Step: Compute $$\Theta_{x}$$**
-$$\Theta{_{11}} = \frac{2\pi{11}}{24} = \frac{22\pi}{24} = \fract{11\pi}{12} \approxeq 2.880 rad$$ 
+
+$$\Theta{_{11}} = \frac{2\pi{11}}{24} = \frac{22\pi}{24} = \frac{11\pi}{12} \approxeq 2.880$$ rad
 
 **2nd Step: Compute $$\Theta_{i}$$ for each non-zero bin**
+
 $$\Theta{_i} = \frac{2\pi{i}}{24}$$
 
 | Bin i | $$w_i$$ | $$\Theta_{i}$$ |
@@ -97,15 +99,15 @@ $$\Theta{_i} = \frac{2\pi{i}}{24}$$
 
 $${\sum_{i=1}^{n} w_i \cdot \cos(\theta_x - \theta_i)}$$
 $$= 2(0.500) + 8(0.707) + 12(0.866) + 7(0.966) + 3(1.000) + 1(0.259)$$
-$$= 1.000 + 5.656 + 10.392 + 6.762 + 3.000 + 0.259 = **27.069**$$
+$$= 1.000 + 5.656 + 10.392 + 6.762 + 3.000 + 0.259 = 27.069$$
 
 **5th Step: Compute total weight**
-$$\sum_{i=1}^{n} w_i = 2 + 8 + 12 + 7 + 3 + 1 = **33**$$
+$$\sum_{i=1}^{n} w_i = 2 + 8 + 12 + 7 + 3 + 1 = 33$$
 
 **Final Step: Compute $$S_{cyclic}$$**
 
-$$S_{\text{cyclic}}(11) = \frac{1}{2} \left( \frac{27.069}{33} + 1 \right) = \frac{1}{2} \left(0.820 + 1 \right) = \frac{1}{2} \left(1.820 \right) = **0.910**$$
-$$\phi(S_{cyclic}) = 1 - S_{cyclic}(11) = 1 - 0.910 = **0.090**$$
+$$S_{\text{cyclic}}(11) = \frac{1}{2} \left( \frac{27.069}{33} + 1 \right) = \frac{1}{2} \left(0.820 + 1 \right) = \frac{1}{2} \left(1.820 \right) = 0.910$$
+$$\phi(S_{cyclic}) = 1 - S_{cyclic}(11) = 1 - 0.910 = 0.090$$
 
 ## Step 3. Apply the Sigmoid Transformation
 Using the sigmoid formula from Kwon et al. 
