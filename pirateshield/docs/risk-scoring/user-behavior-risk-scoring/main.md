@@ -54,8 +54,6 @@ $${Z} = \frac{1 - r}{\sqrt{r * (1 - r)}}$$
 
 - Z_weekend = (1 - 0.03) / $\sqrt{0.03 * 0.97}$ = 0.97 / 0.168 = 5.774
 
-
-[TODO]: Plan weighted circular distance after first solution
 Using the weighted circular distance from Hamidreza Fereidouni et al. 
 
 $$S_{\text{cyclic}}(x) = \frac{1}{2} \left( \frac{\sum_{i=1}^{n} w_i \cdot \cos(\theta_x - \theta_i)}{\sum_{i=1}^{n} w_i} + 1 \right)$$
@@ -67,13 +65,47 @@ Where:
 - $$\Theta{_x} = \frac{2\pi{x}}{period}$$ is the angular position of the current value
 - $$\Theta{_i} = \frac{2\pi{i}}{n}$$ is the angular position of bin $$i$$
 
-For the hours example:
+Let's say if our hour bins were: [0,0,0,0,0,0,0,2,8,12,7,3,0,0,0,0,1,0,0,0,0,0,0,0]
 
-Let's say if our $$w_i$$ were 
+**1st Step: Compute $$\Theta_{x}$$**
+$$\Theta{_{11}} = \frac{2\pi{11}}{24} = \frac{22\pi}{24} = \fract{11\pi}{12} \approxeq 2.880 rad$$ 
 
-$$\Theta{_11} = \frac{2\pi{11}}{period}$$ 
+**2nd Step: Compute $$\Theta_{i}$$ for each non-zero bin**
 $$\Theta{_i} = \frac{2\pi{i}}{24}$$
-$$S_{\text{cyclic}}(x) = \frac{1}{2} \left( \frac{\sum_{i=1}^{n} w_i \cdot \cos(\theta_x - \theta_i)}{\sum_{i=1}^{n} w_i} + 1 \right)$$
+
+| Bin i | $$w_i$$ | $$\Theta_{i}$$ |
+| --- | --- | --- |
+| 7 | 2 | 1.833 rad |
+| 8 | 8 | 2.094 rad |
+| 9 | 12 | 2.356 rad |
+| 10 | 7 | 2.618 rad |
+| 11 | 3 | 2.880 rad |
+| 16 | 1 | 4.189 rad |
+
+**3rd Step: Compute $$\cos(\Theta_x - \Theta_i)$$ for each bin**
+
+| Bin i | $$\theta_x - \theta_i$$ | $$\cos(\theta_x - \theta_i)$$ |
+| --- | --- | --- |
+| 7 | 2.880 - 1.833 = 1.047 | cos(1.047) = 0.500 |
+| 8 | 2.880 - 2.094 = 0.786 | cos(0.786) = 0.707 |
+| 9 | 2.880 - 2.356 = 0.524 | cos(0.524) = 0.866 |
+| 10 | 2.880 - 2.618 = 0.262 | cos(0.262) = 0.966 |
+| 11 | 2.880 - 2.880 = 0.000 | cos(0.000) = 1.000 |
+| 16 | 2.880 - 4.189 = -1.309 | cos(-1.309) = 0.259 |
+
+**4th Step: Compute the weighted sum**
+
+$${\sum_{i=1}^{n} w_i \cdot \cos(\theta_x - \theta_i)}$$
+$$= 2(0.500) + 8(0.707) + 12(0.866) + 7(0.966) + 3(1.000) + 1(0.259)$$
+$$= 1.000 + 5.656 + 10.392 + 6.762 + 3.000 + 0.259 = **27.069**$$
+
+**5th Step: Compute total weight**
+$$\sum_{i=1}^{n} w_i = 2 + 8 + 12 + 7 + 3 + 1 = **33**$$
+
+**Final Step: Compute $$S_{cyclic}$$**
+
+$$S_{\text{cyclic}}(11) = \frac{1}{2} \left( \frac{27.069}{33} + 1 \right) = \frac{1}{2} \left(0.820 + 1 \right) = \frac{1}{2} \left(1.820 \right) = **0.910**$$
+$$\phi(S_{cyclic}) = 1 - S_{cyclic}(11) = 1 - 0.910 = **0.090**$$
 
 ## Step 3. Apply the Sigmoid Transformation
 Using the sigmoid formula from Kwon et al. 
