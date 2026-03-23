@@ -1,3 +1,4 @@
+<<<<<<< Updated upstream
 #lang fsm
 
 #|
@@ -193,3 +194,208 @@ WIP: Make invariants represent the numerical result of the calculations done for
 (R  med  R)
 (R  high R))
                                 'no-dead))
+=======
+#lang fsm
+
+#|
+
+A dfa-based (deterministic finite automata) program can be used to classify Access Risk Scores, as a dfa
+can be used to accept/reject certain risk scores that are above a certain threshold. 
+
+(make-dfa S Σ F δ ['no-dead])
+
+Where:
+S = the set of all thresholds for risk scores 
+Σ = the set of all restricted actions in a policy-based rule system during a given event
+F = the accepting state, where no action is needed (threshold < 40)
+δ = the set of all transition functions for every state such that state ∈ S
+
+ROLE-CONTEXT-RULES CREATION
+
+Σ: '(rv bd oh rf low med high)
+
+Restricted actions: 
+v = Role Violation (+40 points)
+b = Bulk Download (+30 points)
+o = Off-Hours Sensitive Access (+20 points) 
+r = Repeated Failed Access Attempts (+25 points)
+
+Sensitivity factors: 
+l = 0.8
+m = 1
+h = 1.2
+
+ROLE-CONTEXT-RULES = {w | (w ∈ Σ⁺ ^ u⁺ ∈ Σ such that w = us) ^ (BAR * s < 40)}
+
+Where:
+w = an access event
+u⁺ = 1 or more restricted actions
+s = sensitivity factor
+
+; UNIT TESTS
+
+(check-reject? ROLE-CONTEXT-RULES '() '(rv bd oh low) '(rv med) '(rf bd high) '(bd oh low))
+(check-accept? ROLE-CONTEXT-RULES '(bd med) '(rv low) '(oh rf low))
+
+; States
+S: The starting state (BAR = 0)
+B (safe, 20pts): An intermediate, safe state (BAR = 20)
+C (safe, 25pts): An intermediate, safe state (BAR = 25)
+D (safe, 30pts): An intermediate, safe state (BAR = 30)
+E (warning, 40pts): From an intermediate, unsafe state (BAR = 40)
+F (warning, 45pts): From an intermediate, unsafe state (BAR = 45)
+G (warning, 50pts): From an intermediate, unsafe state (BAR = 50)
+H (warning, 55pts): From an intermediate, unsafe state (BAR = 55)
+R: The rejecting state, where no sensitivity factor can bring the score below 40. (BAR >= 60) and or the structure of w is invalid.
+A: The accepting state (FAR < 40)
+
+;; Transition rules
+(state action next-state)
+
+(S rv E)
+(S bd D)
+(S oh B)
+(S rf C)
+
+(B rv R)
+(B bd G)
+(B oh E)
+(B rf F)
+
+(C rv R)
+(C bd H)
+(C oh F)
+(C rf G)
+
+(D rv R)
+(D bd R)
+(D oh G)
+(D rf H)
+
+(E rv R)
+(E bd R)
+(E oh R)
+(E rf R)
+
+(F rv R)
+(F bd R)
+(F oh R)
+(F rf R)
+
+(G rv R)
+(G bd R)
+(G oh R)
+(G rf R)
+
+(H rv R)
+(H bd R)
+(H oh R)
+(H rf R)
+
+(SAFE-20  low  A)
+(SAFE-20  med  A)
+(SAFE-20  high A)
+(SAFE-25  low  A)
+(SAFE-25  med  A)
+(SAFE-25  high A)
+(SAFE-30  low  A)
+(SAFE-30  med  A)
+(SAFE-30  high R)
+(WARNING-40 low  A)
+(WARNING-40 med  R)
+(WARNING-40 high R)
+(WARNING-45 low  A)
+(WARNING-45 med  R)
+(WARNING-45 high R)
+(WARNING-50 low  R)
+(WARNING-50 med  R)
+(WARNING-50 high R)
+(WARNING-55 low  R)
+(WARNING-55 med  R)
+(WARNING-55 high R)
+(R  low  R)
+(R  med  R)
+(R  high R)
+
+|#
+
+;; Implementation 
+(define ROLE-CONTEXT-RULES (make-dfa `(S B C D E F G H A R)
+                             '(v b o r l m h)
+                             'S
+                             '(A)
+                             `((S v E)
+                               (S b D)
+                               (S o B)
+                               (S r C)
+                               (S l A)
+                               (S m A)
+                               (S h A)
+                               (B v R)
+                               (B b G)
+                               (B o E)
+                               (B r H)
+                               (C v R)
+                               (C b H)
+                               (C o F)
+                               (C r G)
+                               (D v R)
+                               (D b R)
+                               (D o G)
+                               (D r H)
+                               (E v R)
+                               (E b R)
+                               (E o R)
+                               (E r R)
+                               (F v R)
+                               (F b R)
+                               (F o R)
+                               (F r R)
+                               (G v R)
+                               (G b R)
+                               (G o R)
+                               (G r R)
+                               (H v R)
+                               (H b R)
+                               (H o R)
+                               (H r R)
+                               (B  l A)
+                               (B  m  A)
+                               (B  h A)
+                               (C  l  A)
+                               (C  m  A)
+                               (C  h A)
+                               (D  l  A)
+                               (D  m  A)
+                               (D  h R)
+                               (E l  A)
+                               (E m  R)
+                               (E h R)
+                               (F l  A)
+                               (F m  R)
+                               (F h R)
+                               (G l  R)
+                               (G m  R)
+                               (G h R)
+                               (H l R)
+                               (H m  R)
+                               (H h R)
+                               (R  l  R)
+                               (R  m  R)
+                               (R  h R)
+                               (R v R)
+                               (R b R)
+                               (R o R)
+                               (R r R)
+                               (A v A)
+                               (A b A)
+                               (A o A)
+                               (A r A)
+                               (A l A)
+                               (A m A)
+                               (A h A))
+                                'no-dead))
+
+
+;; WIP: Make invariants represent the numerical result of the calculations done for each action
+>>>>>>> Stashed changes
