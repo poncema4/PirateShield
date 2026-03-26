@@ -3,37 +3,37 @@
     "event_id": "e3e6e982-05ff-4d0f-8791-b3aad21ae725",
     "event_type": "unusual_login",
     "source_ip": "10.0.0.22",
-    "nn_score": 0.0012,
-    "nn_label": "Normal",
+    "nn_score": 1.0,
+    "nn_label": "Critical",
     "hybrid_score": 0.7019,
     "hybrid_label": "High Risk",
-    "agree": false
+    "agree": true
   },
   {
     "event_id": "fbbe87a9-63b8-4299-90f3-0e2048886b92",
     "event_type": "network_connection",
     "source_ip": "10.0.0.5",
-    "nn_score": 1.0,
-    "nn_label": "Critical",
+    "nn_score": 0.0186,
+    "nn_label": "Normal",
     "hybrid_score": 0.9401,
     "hybrid_label": "Critical",
-    "agree": true
+    "agree": false
   },
   {
     "event_id": "3d96dcf1-8dae-4705-a09e-9f0217631b3f",
     "event_type": "dns_lookup",
     "source_ip": "10.0.0.22",
-    "nn_score": 0.0004,
-    "nn_label": "Normal",
+    "nn_score": 0.4071,
+    "nn_label": "Suspicious",
     "hybrid_score": 0.6995,
     "hybrid_label": "High Risk",
-    "agree": false
+    "agree": true
   },
   {
     "event_id": "e2ef1941-2e50-4a7d-a44a-7f9a81cb4393",
     "event_type": "lateral_movement",
     "source_ip": "10.0.0.22",
-    "nn_score": 0.0012,
+    "nn_score": 0.0065,
     "nn_label": "Normal",
     "hybrid_score": 0.4247,
     "hybrid_label": "Suspicious",
@@ -43,10 +43,10 @@
     "event_id": "8f79921d-bf72-4d03-84ef-3e6586a889d4",
     "event_type": "network_connection",
     "source_ip": "10.0.0.5",
-    "nn_score": 0.862,
-    "nn_label": "Critical",
+    "nn_score": 0.0385,
+    "nn_label": "Normal",
     "hybrid_score": 0.9879,
     "hybrid_label": "Critical",
-    "agree": true
+    "agree": false
   }
 ]

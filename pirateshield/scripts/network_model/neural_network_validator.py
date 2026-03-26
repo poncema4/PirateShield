@@ -1,18 +1,11 @@
 """
-PirateShield – Neural Network Validator
+
+PirateShield - Neural Network Validator
 =========================================
 Trains a PyTorch Autoencoder on your synthetic network events,
 then cross-validates its anomaly scores against the existing
-3-layer hybrid model (SARIMA + DBSCAN + PCA).
+3-layer hybrid model (SARIMA + DBSCAN + PCA)
 
-Run:
-    pip install torch scikit-learn numpy pandas statsmodels --break-system-packages
-    python3 neural_network_validator.py
-
-Output:
-    - Prints per-event comparison table
-    - Saves nn_risk_scores.json alongside network_risk_scores.json
-    - Plots correlation between NN and hybrid scores (if matplotlib available)
 """
 
 import json
@@ -24,28 +17,20 @@ import pandas as pd
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import roc_auc_score, classification_report
 
-# ---------------------------------------------------------------------------
-# Resolve paths — works whether you run from scripts/network_model/ or root
-# ---------------------------------------------------------------------------
 SCRIPT_DIR = Path(__file__).resolve().parent
-# Try to auto-detect the project root by walking up for a 'data' directory
 def find_data_dir():
     candidate = SCRIPT_DIR
     for _ in range(6):
         if (candidate / "data").exists():
             return candidate / "data"
         candidate = candidate.parent
-    return SCRIPT_DIR / "data"   # fallback
+    return SCRIPT_DIR / "data"
 
 DATA_DIR    = find_data_dir()
 DATA_FILE   = DATA_DIR / "synthetic_events" / "synthetic_network_events.json"
 HYBRID_FILE = DATA_DIR / "risk_scores" / "network" / "network_risk_scores.json"
 NN_OUTPUT   = DATA_DIR / "risk_scores" / "network" / "neural_network_risk_scores.json"
 
-# ---------------------------------------------------------------------------
-# Import the existing model helpers (same directory as this script when
-# placed in scripts/network_model/, otherwise adjust the sys.path insert)
-# ---------------------------------------------------------------------------
 MODEL_DIR = SCRIPT_DIR
 if str(MODEL_DIR) not in sys.path:
     sys.path.insert(0, str(MODEL_DIR))
@@ -56,12 +41,9 @@ try:
     )
     HYBRID_AVAILABLE = True
 except ImportError:
-    print("[WARN] network_anomaly_model not found – hybrid scores will be loaded from JSON only")
+    print("[WARN] network_anomaly_model not found - hybrid scores will be loaded from JSON only")
     HYBRID_AVAILABLE = False
 
-# ---------------------------------------------------------------------------
-# PyTorch Autoencoder
-# ---------------------------------------------------------------------------
 try:
     import torch
     import torch.nn as nn
@@ -72,14 +54,13 @@ except ImportError:
     print("  pip install torch --break-system-packages")
     sys.exit(1)
 
-
 class Autoencoder(nn.Module):
     """
-    Simple fully-connected autoencoder.
+    Simple fully-connected autoencoder
     Architecture: 9 → 16 → 8 → 4 → 8 → 16 → 9
     Uses ReLU activations in hidden layers, sigmoid on the output
     (features are StandardScaler-normalised but we still benefit from
-    the bounded reconstruction for stability).
+    the bounded reconstruction for stability)
     """
     def __init__(self, input_dim: int = 9):
         super().__init__()
@@ -102,14 +83,13 @@ class Autoencoder(nn.Module):
     def forward(self, x):
         return self.decoder(self.encoder(x))
 
-
 def train_autoencoder(
     X_train: np.ndarray,
     epochs: int = 400,
     lr: float = 1e-3,
     batch_size: int = 8,
 ) -> tuple[Autoencoder, list[float]]:
-    """Train on the provided feature matrix and return (model, loss_history)."""
+    """Train on the provided feature matrix and return (model, loss_history)"""
     model = Autoencoder(input_dim=X_train.shape[1])
     optimizer = optim.Adam(model.parameters(), lr=lr)
     criterion = nn.MSELoss()
@@ -119,7 +99,6 @@ def train_autoencoder(
 
     model.train()
     for epoch in range(epochs):
-        # Mini-batch SGD
         perm = torch.randperm(len(tensor))
         epoch_loss = 0.0
         for i in range(0, len(tensor), batch_size):
@@ -134,9 +113,8 @@ def train_autoencoder(
 
     return model, losses
 
-
 def reconstruction_scores(model: Autoencoder, X: np.ndarray) -> np.ndarray:
-    """Per-sample MSE reconstruction error, normalised to [0, 1]."""
+    """Per-sample MSE reconstruction error, normalised to [0, 1]"""
     model.eval()
     with torch.no_grad():
         tensor = torch.tensor(X, dtype=torch.float32)
@@ -145,16 +123,11 @@ def reconstruction_scores(model: Autoencoder, X: np.ndarray) -> np.ndarray:
     max_err = errors.max() if errors.max() > 0 else 1.0
     return np.clip(errors / max_err, 0, 1)
 
-
-# ---------------------------------------------------------------------------
-# Main
-# ---------------------------------------------------------------------------
 def main():
     print("=" * 62)
-    print("PirateShield – Neural Network Validator")
+    print("PirateShield - Neural Network Validator")
     print("=" * 62)
 
-    # 1. Load events --------------------------------------------------------
     if not DATA_FILE.exists():
         print(f"[ERROR] Data file not found: {DATA_FILE}")
         print("Make sure DATA_FILE points to your synthetic_network_events.json")
@@ -164,14 +137,12 @@ def main():
         events = json.load(f)
     print(f"\nLoaded {len(events)} events from {DATA_FILE.name}")
 
-    # 2. Feature extraction -------------------------------------------------
     if HYBRID_AVAILABLE:
         df = events_to_dataframe(events)
         df = compute_risk_scores(df)
         hybrid_scores = df["risk_score"].values
         hybrid_labels = df["risk_label"].values
     else:
-        # Fall back to the saved JSON
         if not HYBRID_FILE.exists():
             print(f"[ERROR] Hybrid scores file not found: {HYBRID_FILE}")
             sys.exit(1)
@@ -180,7 +151,6 @@ def main():
         hybrid_scores = np.array([r["risk_score"] for r in saved])
         hybrid_labels = np.array([r["risk_label"] for r in saved])
 
-        # Rebuild df for feature extraction only
         import importlib
         try:
             mod = importlib.import_module("network_anomaly_model")
@@ -189,23 +159,17 @@ def main():
             print("[ERROR] Cannot import network_anomaly_model for features")
             sys.exit(1)
 
-    # 3. Scale features -----------------------------------------------------
     features = df[FEATURE_COLS].values.astype(float)
     scaler = StandardScaler()
     X = scaler.fit_transform(features)
 
-    # 4. Train autoencoder on ALL data
-    #    In production you'd train only on "Normal" events so the AE learns
-    #    what normal looks like – here we use all since the dataset is small.
     print("\nTraining autoencoder …", end=" ", flush=True)
     model, loss_history = train_autoencoder(X, epochs=500, lr=5e-4, batch_size=4)
     final_loss = loss_history[-1]
     print(f"done  (final MSE loss: {final_loss:.6f})")
 
-    # 5. Score every event --------------------------------------------------
     nn_scores = reconstruction_scores(model, X)
 
-    # 6. Comparison table ---------------------------------------------------
     label_order = {"Normal": 0, "Suspicious": 1, "High Risk": 2, "Critical": 3}
 
     def classify(score: float) -> str:
@@ -225,7 +189,6 @@ def main():
         n_score = nn_scores[i]
         h_label = hybrid_labels[i]
         n_label = nn_labels[i]
-        # Agreement: within one tier
         h_tier = label_order.get(h_label, 0)
         n_tier = label_order.get(n_label, 0)
         agree = abs(h_tier - n_tier) <= 1
@@ -238,7 +201,6 @@ def main():
     pct = agree_count / len(df) * 100
     print(f"\nAgreement (within 1 tier): {agree_count}/{len(df)} = {pct:.1f}%")
 
-    # 7. Correlation --------------------------------------------------------
     correlation = np.corrcoef(hybrid_scores, nn_scores)[0, 1]
     print(f"Pearson correlation (hybrid vs NN): {correlation:.4f}")
 
@@ -249,8 +211,6 @@ def main():
     else:
         print("  → Low agreement — consider retraining on more labelled data")
 
-    # 8. Pseudo-AUC using hybrid labels as ground truth --------------------
-    # Treat Critical + High Risk as positive class
     y_true = np.array([1 if l in ("High Risk", "Critical") else 0 for l in hybrid_labels])
     if y_true.sum() > 0 and y_true.sum() < len(y_true):
         auc = roc_auc_score(y_true, nn_scores)
@@ -258,7 +218,6 @@ def main():
         if auc >= 0.75:
             print("  → NN can independently detect High/Critical events ✓")
 
-    # 9. Save NN scores -----------------------------------------------------
     output = []
     for i, row in df.iterrows():
         output.append({
@@ -278,7 +237,6 @@ def main():
         json.dump(output, f, indent=2)
     print(f"\nNN scores saved → {NN_OUTPUT}")
 
-    # 10. Optional plot -----------------------------------------------------
     try:
         import matplotlib.pyplot as plt
         import matplotlib.colors as mcolors
@@ -293,7 +251,6 @@ def main():
 
         fig, axes = plt.subplots(1, 2, figsize=(12, 5))
 
-        # Scatter: hybrid vs NN
         ax = axes[0]
         ax.scatter(hybrid_scores, nn_scores, c=colors, s=80, edgecolors="white", linewidths=0.5)
         ax.plot([0, 1], [0, 1], "--", color="#94a3b8", linewidth=1, label="y=x")
@@ -307,7 +264,6 @@ def main():
         legend_elements = [Patch(facecolor=v, label=k) for k, v in color_map.items()]
         ax.legend(handles=legend_elements, fontsize=9, loc="upper left")
 
-        # Bar: NN score per event
         ax2 = axes[1]
         xticks = range(len(df))
         bar_colors = [color_map[l] for l in nn_labels]
@@ -334,7 +290,6 @@ def main():
     print("\n" + "=" * 62)
     print("Validation complete.")
     print("=" * 62)
-
 
 if __name__ == "__main__":
     main()
