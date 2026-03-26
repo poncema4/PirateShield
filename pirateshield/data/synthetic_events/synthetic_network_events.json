@@ -1,0 +1,192 @@
+[
+  {
+    "user_id": "teacher2",
+    "event_id": "b3dda756-9f97-490a-b6fb-68e3679e6ad1",
+    "timestamp": "2026-03-26T07:14:17.432622-05:00",
+    "source_ip": "10.0.0.12",
+    "destination_ip": "203.0.113.45",
+    "destination_port": 445,
+    "lat": -49.86463,
+    "long": -113.927227,
+    "protocol": "TCP",
+    "bytes_sent": 89324,
+    "bytes_received": 5221,
+    "device_id": "host-B",
+    "user_known_devices": [
+      "host-B",
+      "host-C"
+    ],
+    "event_type": "lateral_movement"
+  },
+  {
+    "user_id": "teacher2",
+    "event_id": "952eb0c5-5361-4912-a71a-bbe1029ee8ba",
+    "timestamp": "2026-03-26T07:14:22.432622-05:00",
+    "source_ip": "172.16.0.3",
+    "destination_ip": "142.250.72.14",
+    "destination_port": 8080,
+    "lat": -68.258981,
+    "long": 162.59665,
+    "protocol": "TCP",
+    "bytes_sent": 126405,
+    "bytes_received": 19349,
+    "device_id": "host-B",
+    "user_known_devices": [
+      "host-B",
+      "host-C"
+    ],
+    "event_type": "network_connection"
+  },
+  {
+    "user_id": "student1",
+    "event_id": "2a8f98c9-d818-4d9d-b642-e9b541b89884",
+    "timestamp": "2026-03-26T07:14:27.432622-05:00",
+    "source_ip": "10.0.0.22",
+    "destination_ip": "203.0.113.45",
+    "destination_port": 80,
+    "lat": 27.200059,
+    "long": 146.339548,
+    "protocol": "TCP",
+    "bytes_sent": 162496,
+    "bytes_received": 18514,
+    "device_id": "host-A",
+    "user_known_devices": [
+      "host-A",
+      "host-B"
+    ],
+    "event_type": "network_connection"
+  },
+  {
+    "user_id": "it_staff3",
+    "event_id": "504ae0d7-76d0-4b0a-9032-f50972986e0d",
+    "timestamp": "2026-03-26T07:14:32.432622-05:00",
+    "source_ip": "10.0.0.22",
+    "destination_ip": "198.51.100.77",
+    "destination_port": 443,
+    "lat": -86.029173,
+    "long": 81.978901,
+    "protocol": "TCP",
+    "bytes_sent": 325350,
+    "bytes_received": 15377,
+    "device_id": "host-C",
+    "user_known_devices": [
+      "host-C",
+      "host-D"
+    ],
+    "event_type": "network_connection"
+  },
+  {
+    "user_id": "teacher2",
+    "event_id": "58fd39c6-6492-4d43-98e7-89460789c06e",
+    "timestamp": "2026-03-26T07:14:37.432622-05:00",
+    "source_ip": "10.0.0.12",
+    "destination_ip": "185.220.101.1",
+    "destination_port": 443,
+    "lat": 7.726039,
+    "long": -39.025191,
+    "protocol": "TCP",
+    "bytes_sent": 869594,
+    "bytes_received": 10551,
+    "device_id": "host-C",
+    "user_known_devices": [
+      "host-B",
+      "host-C"
+    ],
+    "event_type": "file_transfer"
+  },
+  {
+    "user_id": "teacher2",
+    "event_id": "60e1a7c7-7d1d-4727-b1b7-ecf9df582313",
+    "timestamp": "2026-03-26T07:14:27.073043-05:00",
+    "source_ip": "10.0.0.12",
+    "destination_ip": "142.250.72.14",
+    "destination_port": 21,
+    "lat": 78.672287,
+    "long": 178.303155,
+    "protocol": "TCP",
+    "bytes_sent": 2355838,
+    "bytes_received": 11350,
+    "device_id": "host-C",
+    "user_known_devices": [
+      "host-B",
+      "host-C"
+    ],
+    "event_type": "file_transfer"
+  },
+  {
+    "user_id": "it_staff3",
+    "event_id": "86312ab6-9ec6-4228-ba12-9fb3e163ba8a",
+    "timestamp": "2026-03-26T07:14:32.073043-05:00",
+    "source_ip": "10.0.0.5",
+    "destination_ip": "91.108.4.1",
+    "destination_port": 1194,
+    "lat": -78.610241,
+    "long": -118.913077,
+    "protocol": "UDP",
+    "bytes_sent": 267352,
+    "bytes_received": 40541,
+    "device_id": "host-C",
+    "user_known_devices": [
+      "host-C",
+      "host-D"
+    ],
+    "event_type": "vpn_connection"
+  },
+  {
+    "user_id": "teacher2",
+    "event_id": "b68630fc-063e-42e0-afc8-853472056daa",
+    "timestamp": "2026-03-26T07:14:37.073043-05:00",
+    "source_ip": "172.16.0.3",
+    "destination_ip": "198.51.100.77",
+    "destination_port": 1194,
+    "lat": -41.626698,
+    "long": -28.119736,
+    "protocol": "UDP",
+    "bytes_sent": 134275,
+    "bytes_received": 29169,
+    "device_id": "host-B",
+    "user_known_devices": [
+      "host-B",
+      "host-C"
+    ],
+    "event_type": "vpn_connection"
+  },
+  {
+    "user_id": "teacher2",
+    "event_id": "1ccb56bc-0eb2-4ed4-8356-98284640e77f",
+    "timestamp": "2026-03-26T07:14:42.073043-05:00",
+    "source_ip": "10.0.0.5",
+    "destination_ip": "142.250.72.14",
+    "destination_port": 80,
+    "lat": 29.992563,
+    "long": -47.413496,
+    "protocol": "TCP",
+    "bytes_sent": 346846,
+    "bytes_received": 12593,
+    "device_id": "host-C",
+    "user_known_devices": [
+      "host-B",
+      "host-C"
+    ],
+    "event_type": "network_connection"
+  },
+  {
+    "user_id": "student1",
+    "event_id": "8d35a5e3-7ced-4860-ae40-7c61aeaf276e",
+    "timestamp": "2026-03-26T07:14:47.073043-05:00",
+    "source_ip": "10.0.0.5",
+    "destination_ip": "203.0.113.45",
+    "destination_port": 21,
+    "lat": 61.972007,
+    "long": 175.57626,
+    "protocol": "TCP",
+    "bytes_sent": 16246,
+    "bytes_received": 45748,
+    "device_id": "host-B",
+    "user_known_devices": [
+      "host-A",
+      "host-B"
+    ],
+    "event_type": "brute_force"
+  }
+]

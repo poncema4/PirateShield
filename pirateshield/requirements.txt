@@ -1,0 +1,11 @@
+joblib==1.5.3
+numpy==2.4.3
+packaging==26.0
+pandas==3.0.1
+patsy==1.0.2
+python-dateutil==2.9.0.post0
+scikit-learn==1.8.0
+scipy==1.17.1
+six==1.17.0
+statsmodels==0.14.6
+threadpoolctl==3.6.0

@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parents[1]
-OUTPUT_FILE = BASE_DIR / "data" / "synthetic_network_events.json"
+OUTPUT_FILE = BASE_DIR / "data" / "synthetic_events" / "synthetic_network_events.json"
 EST = timezone(timedelta(hours=-5))
 
 SOURCE_IPS = ["10.0.0.5", "10.0.0.9", "10.0.0.12", "10.0.0.22", "172.16.0.3"]
