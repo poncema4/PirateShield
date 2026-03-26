@@ -1,10 +1,10 @@
 """
-PirateShield – Network Model Test Suite
+
+PirateShield - Network Model Test Suite
 ========================================
 Validates the mathematical calculations and algorithms in the
-network anomaly detection model against known expected outputs.
+network anomaly detection model against known expected outputs
 
-Run:  python scripts/test_network_model.py
 """
 
 import json
@@ -14,7 +14,6 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-# Import the model
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from network_anomaly_model import (
     FEATURE_COLS,
@@ -31,12 +30,11 @@ from network_anomaly_model import (
     load_events,
 )
 
-BASE_DIR = Path(__file__).resolve().parents[1]
-DATA_FILE = BASE_DIR / "data" / "synthetic_network_events.json"
+BASE_DIR = Path(__file__).resolve().parents[2]
+DATA_FILE = BASE_DIR / "data" / "synthetic_events" /"synthetic_network_events.json"
 
 PASSED = 0
 FAILED = 0
-
 
 def check(name: str, condition: bool, detail: str = ""):
     global PASSED, FAILED
@@ -46,7 +44,6 @@ def check(name: str, condition: bool, detail: str = ""):
     else:
         FAILED += 1
         print(f"  FAIL  {name}  {detail}")
-
 
 # ===========================================================================
 # Test 1: Composite weight formula
@@ -58,7 +55,6 @@ def test_weights():
     check("W_TRAFFIC = 0.40", W_TRAFFIC == 0.40)
     check("W_BEHAVIOR = 0.35", W_BEHAVIOR == 0.35)
     check("W_RECONSTRUCTION = 0.25", W_RECONSTRUCTION == 0.25)
-
 
 # ===========================================================================
 # Test 2: Risk classification thresholds
@@ -75,13 +71,11 @@ def test_thresholds():
     check("0.76 → Critical",   classify_risk(0.76)[0] == "Critical")
     check("1.00 → Critical",   classify_risk(1.00)[0] == "Critical")
 
-
 # ===========================================================================
 # Test 3: Manual composite calculation (from network_model.md example)
 # ===========================================================================
 def test_manual_composite():
     print("\n[Test 3] Manual composite calculation (network_model.md example)")
-    # Example from docs: Traffic=0.7, Behavior=0.8, Recon=0.5 → 0.69
     traffic = 0.7
     behavior = 0.8
     recon = 0.5
@@ -90,7 +84,6 @@ def test_manual_composite():
           abs(expected - 0.69) < 0.01, f"got {expected}")
     label, _ = classify_risk(expected)
     check("0.69 → High Risk", label == "High Risk", f"got {label}")
-
 
 # ===========================================================================
 # Test 4: Score ranges [0, 1]
@@ -105,7 +98,6 @@ def test_score_ranges():
         vals = df[col].values
         check(f"{col} min >= 0", vals.min() >= 0, f"min={vals.min()}")
         check(f"{col} max <= 1", vals.max() <= 1, f"max={vals.max()}")
-
 
 # ===========================================================================
 # Test 5: High-risk events get higher scores
@@ -129,7 +121,6 @@ def test_high_risk_detection():
     else:
         check("high-risk mean > normal mean", True, "skipped – not enough data")
 
-
 # ===========================================================================
 # Test 6: Layer independence (each score computed separately)
 # ===========================================================================
@@ -142,7 +133,6 @@ def test_layer_independence():
     b_scores = compute_behavior_scores(df)
     r_scores = compute_reconstruction_scores(df)
 
-    # Verify composite formula
     composite = W_TRAFFIC * t_scores + W_BEHAVIOR * b_scores + W_RECONSTRUCTION * r_scores
     composite = np.clip(composite, 0, 1)
 
@@ -150,7 +140,6 @@ def test_layer_independence():
     diff = np.abs(composite - df2["risk_score"].values)
     check("composite matches formula", diff.max() < 1e-3,
           f"max diff={diff.max():.6f}")
-
 
 # ===========================================================================
 # Test 7: Data exfil events should be Critical or High Risk
@@ -167,7 +156,6 @@ def test_data_exfil_severity():
         check(f"data_exfil {row['event_id'][:8]}… → {label}",
               label in ("High Risk", "Critical"),
               f"got {label} (score={row['risk_score']:.4f})")
-
 
 # ===========================================================================
 # Test 8: Alert generation
@@ -186,8 +174,7 @@ def test_alert_generation():
         check("alert contains Severity", "Severity:" in alert)
         check("alert contains Event ID", "Event ID:" in alert)
     else:
-        check("alert generation", True, "skipped – no flagged events")
-
+        check("alert generation", True, "skipped - no flagged events")
 
 # ===========================================================================
 # Test 9: Feature extraction completeness
@@ -199,7 +186,6 @@ def test_feature_extraction():
     for col in FEATURE_COLS:
         check(f"column '{col}' exists", col in df.columns)
     check("no NaN in features", not df[FEATURE_COLS].isnull().any().any())
-
 
 # ===========================================================================
 # Test 10: Custom event scoring
@@ -222,7 +208,6 @@ def test_custom_event():
         "lat": 0.0,
         "long": 0.0,
     }]
-    # Need enough data for the model to work, so pad with normal events
     normal = [{
         "event_id": f"normal-{i}",
         "timestamp": f"2026-03-26T11:{i:02d}:00Z",
@@ -255,7 +240,6 @@ def test_custom_event():
           normal_scores.mean() < c2_row["risk_score"],
           f"normal avg={normal_scores.mean():.4f}")
 
-
 # ===========================================================================
 # Main
 # ===========================================================================
@@ -279,7 +263,6 @@ def main():
     print(f"Results: {PASSED} passed, {FAILED} failed, {PASSED + FAILED} total")
     print("=" * 60)
     sys.exit(0 if FAILED == 0 else 1)
-
 
 if __name__ == "__main__":
     main()

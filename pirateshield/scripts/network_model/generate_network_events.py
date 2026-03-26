@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-BASE_DIR = Path(__file__).resolve().parents[1]
+BASE_DIR = Path(__file__).resolve().parents[2]
 OUTPUT_FILE = BASE_DIR / "data" / "synthetic_events" / "synthetic_network_events.json"
 EST = timezone(timedelta(hours=-5))
 
