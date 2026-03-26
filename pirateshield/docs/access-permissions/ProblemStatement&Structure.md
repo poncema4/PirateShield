@@ -7,7 +7,7 @@ To combat this issue, our  goal is to release  PirateShield, a multi-layer cyber
 ##  Introduction to Role Context - Mitigating Privilege Misuse in Access Control through Anomaly Detection (Mehri et al. 2023) [*2*]
 
 
-Access control systems serve as the first line of defense for protecting sensitive data and resources. In PirateShield, role-based policies form this foundation, as they enforce predefined access rules to flag when users act outside their expected permissions. That said, role-based access control has a well-known limitation. As Mehri et al. point out, once permissions are assigned, there is nothing stopping a user from misusing them. This applies to both **insider threats** (legitimate users abusing their access) and **external attackers** (who steal credentials to impersonate someone). PirateShield will take this into account by layering behavioral monitoring on top of role policies, giving it the ability to flag anomalies when a user's actions deviate from what's expected of their role.
+Access control systems serve as the first line of defense for protecting sensitive data and resources. In PirateShield, role-based policies form this foundation, as they enforce predefined access rules to flag when users act outside their expected permissions. That said, role-based access control has a well-known limitation. Once permissions are assigned, there is nothing stopping a user from misusing them. This applies to both **insider threats** (legitimate users abusing their access) and **external attackers** (who steal credentials to impersonate someone). PirateShield will take this into account by layering behavioral monitoring on top of role policies, giving it the ability to flag anomalies when a user's actions deviate from what's expected of their role.
 
 Examples of Role-Based Permissions in a SIS: -  
 **Students** – View course info, contact advisors/teachers - 
@@ -77,6 +77,8 @@ Each triggered rule corresponds to a specific policy violation and contributes a
 |Rule 2 - Bulk Download | More than 50 files downloaded within a 10-minute window | +30 |
 |Rule 3 - Off-Hours Sensitivie Access | A high-sensitivity system is accessed outisde school hours (school_hour_flag = 0) | +20 |
 |Rule 4 - Repeated Failure Attempts | 5 or more failed access attempts to a restricted system | +25 |
+
+If multiple rules are triggered, a context-multiplier is applied. (Off-hours sensitive access + bulk download + repeated failure attempts = 1.5x multiplier)
 
  **NOTE:** Rules themselves do not immediately trigger alerts. Instead, they accumulate risk points that contribute to the **FAR** score, which is then evaluated against alert thresholds.
 
