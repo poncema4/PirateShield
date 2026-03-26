@@ -28,7 +28,7 @@ from statsmodels.tsa.statespace.sarimax import SARIMAX
 
 BASE_DIR = Path(__file__).resolve().parents[2]
 DATA_FILE = BASE_DIR / "data" / "synthetic_events" / "synthetic_network_events.json"
-MODEL_OUTPUT = BASE_DIR / "data" / "risk_scores" / "network_risk_scores.json"
+MODEL_OUTPUT = BASE_DIR / "data" / "risk_scores" / "network" / "network_risk_scores.json"
 
 THRESHOLDS = [
     (0.30, "Normal",     "No action"),
