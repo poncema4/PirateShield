@@ -2,10 +2,17 @@ import Database from "better-sqlite3";
 
 const db = new Database("pirateshield.db");
 
+db.exec(`DROP TABLE IF EXISTS network_events`);
+db.exec(`DROP TABLE IF EXISTS device_events`);
+db.exec(`DROP TABLE IF EXISTS identity_events`);
+db.exec(`DROP TABLE IF EXISTS unified_events`);
+db.exec(`DROP TABLE IF EXISTS alerts`);
+db.exec(`DROP TABLE IF EXISTS access_permissions`);
+
 db.exec(`
   CREATE TABLE IF NOT EXISTS network_events (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    event_id TEXT,
+    event_id TEXT UNIQUE,
     user_id TEXT,
     timestamp TEXT,
     source_ip TEXT,
@@ -95,7 +102,7 @@ db.exec(`
 db.exec(`
   CREATE TABLE IF NOT EXISTS alerts (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    event_id TEXT,
+    event_id TEXT UNIQUE,
     user_id TEXT,
     device_id TEXT,
     severity TEXT NOT NULL CHECK(severity IN ('low','medium','high','critical')),

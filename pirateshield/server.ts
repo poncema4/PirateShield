@@ -44,13 +44,14 @@ export interface NetworkEvent {
   device_id: string;
   user_known_devices: string[];
   event_type: string;
+  _manual_score?: number;
 }
 
 app.use(express.json());
 
 function maybeCreateAlert(event: Partial<UnifiedEvent | DeviceEvent>, risk_score: number, breakdown?: NetworkRiskBreakdown) {
   const cat = (event as UnifiedEvent).event_category;
-  if (cat === "network" && breakdown) {
+  if (cat === "network") {
     if (!shouldGenerateNetworkAlert(risk_score, breakdown)) return;
   } else {
     const severity = getAlertSeverity(risk_score);
@@ -58,9 +59,25 @@ function maybeCreateAlert(event: Partial<UnifiedEvent | DeviceEvent>, risk_score
   }
   const severity = getAlertSeverity(risk_score);
   if (!severity) return;
-  const { reasons } = calculateUnifiedRisk(event as Partial<UnifiedEvent>);
+
+  let reasons: string[];
+  if (cat === "network" && breakdown) {
+    const ruleNames: Record<string, string> = {
+      m01: "M01-ExcessiveOutbound", m02: "M02-VPN/Proxy", m03: "M03-AbnormalConnections",
+      m04: "M04-HighRiskPort", m05: "M05-SuspiciousProtocol", m06: "M06-UnknownDevice",
+      m07: "M07-Beaconing", m08: "M08-ThreatType",
+    };
+    reasons = [];
+    for (const [key, name] of Object.entries(ruleNames)) {
+      const val = (breakdown as any)[key];
+      if (val > 0) reasons.push(`${name}(+${val})`);
+    }
+  } else {
+    reasons = calculateUnifiedRisk(event as Partial<UnifiedEvent>).reasons;
+  }
+
   db.prepare(`
-    INSERT INTO alerts (event_id, user_id, device_id, severity, reason, risk_score)
+    INSERT OR IGNORE INTO alerts (event_id, user_id, device_id, severity, reason, risk_score)
     VALUES (@event_id, @user_id, @device_id, @severity, @reason, @risk_score)
   `).run({
     event_id:  (event as any).event_id  ?? null,
@@ -120,7 +137,7 @@ function ingestDeviceEvent(e: any) {
   const { score: risk_score } = scoreDeviceEvent(norm);
   const fp = path.join(__dirname, "data", "synthetic_events", "synthetic_device_events.json");
   const existing = readJson(fp);
-  if (!existing.some((x: any) => x.event_id === e.event_id)) writeJson(fp, [...existing, e]);
+  if (!existing.some((x: any) => x.event_id === e.event_id)) writeJson(fp, [e, ...existing]);
   try {
     db.prepare(`
       INSERT OR IGNORE INTO device_events
@@ -158,7 +175,7 @@ function ingestIdentityEvent(e: any) {
   const fp = path.join(__dirname, "data", "synthetic_events", "synthetic_identity_events.json");
   const existing = readJson(fp);
   const alreadyExists = existing.some((x: any) => x.event_id === e.event_id);
-  if (!alreadyExists) writeJson(fp, [...existing, e]);
+  if (!alreadyExists) writeJson(fp, [e, ...existing]);
 
   try {
     db.prepare(`
@@ -281,6 +298,8 @@ app.get("/", (req, res) => {
   let rawEvents: NetworkEvent[] = [];
   if (fs.existsSync(fp)) rawEvents = readJson(fp);
 
+  const PAGE_SIZE = 10;
+
   const total = results.length;
   const alertCount = results.filter((r: any) => r.alert).length;
   const criticalCount = results.filter((r: any) => r.risk_label === "CRITICAL").length;
@@ -305,36 +324,27 @@ app.get("/", (req, res) => {
       </tbody>
     </table>`;
 
-  const resultsRows = results.slice(-20).map((r: any) => {
-    const lvl = r.risk_score >= 85 ? "critical" : r.risk_score >= 60 ? "high" : r.risk_score >= 35 ? "medium" : r.risk_score >= 15 ? "low" : "none";
-    return `<tr>
-      <td>${r.event_type ?? "---"}</td>
-      <td>${r.source_ip ?? "---"}</td>
-      <td>${r.destination_ip ?? "---"}</td>
-      <td>${r.m01_score ?? 0}</td><td>${r.m02_score ?? 0}</td><td>${r.m03_score ?? 0}</td><td>${r.m04_score ?? 0}</td>
-      <td>${r.m05_score ?? 0}</td><td>${r.m06_score ?? 0}</td><td>${r.m07_score ?? 0}</td><td>${r.m08_score ?? 0}</td>
-      <td><strong><span class="badge badge-${lvl}">${r.risk_score}</span></strong></td>
-      <td>${r.risk_label}</td>
-      <td>${r.alert ? '<span style="color:#da3633">YES</span>' : '<span style="color:#8b949e">no</span>'}</td>
-    </tr>`;
-  }).join("");
+  // Build ALL rows as JSON arrays for client-side pagination
+  const allResultsJson = JSON.stringify([...results].reverse().map((r: any) => ({
+    event_type: r.event_type ?? "---",
+    source_ip: r.source_ip ?? "---",
+    destination_ip: r.destination_ip ?? "---",
+    m01: r.m01_score ?? 0, m02: r.m02_score ?? 0, m03: r.m03_score ?? 0, m04: r.m04_score ?? 0,
+    m05: r.m05_score ?? 0, m06: r.m06_score ?? 0, m07: r.m07_score ?? 0, m08: r.m08_score ?? 0,
+    risk_score: r.risk_score, risk_label: r.risk_label, alert: r.alert,
+  })));
 
-  const sampleRows = rawEvents.slice(-20).map((e: any) => {
-    const breakdown = scoreNetworkRules(e);
-    const s = breakdown.composite;
-    const lvl = s >= 85 ? "critical" : s >= 60 ? "high" : s >= 35 ? "medium" : s >= 15 ? "low" : "none";
-    return `<tr>
-      <td><code>${e.event_id?.slice(0,8)}...</code></td>
-      <td>${e.user_id}</td>
-      <td>${e.event_type}</td>
-      <td>${e.source_ip}</td>
-      <td>${e.destination_ip}:${e.destination_port}</td>
-      <td>${e.protocol}</td>
-      <td>${e.device_id}</td>
-      <td>${(e.bytes_sent ?? 0).toLocaleString()}</td>
-      <td><span class="badge badge-${lvl}">${s}</span></td>
-    </tr>`;
-  }).join("");
+  const allSamplesJson = JSON.stringify([...rawEvents].reverse().map((e: any) => {
+    const s = typeof e._manual_score === "number" ? e._manual_score : scoreNetworkRules(e).composite;
+    return {
+      event_id: e.event_id?.slice(0,8) ?? "---",
+      user_id: e.user_id, event_type: e.event_type,
+      source_ip: e.source_ip,
+      dst: `${e.destination_ip}:${e.destination_port}`,
+      protocol: e.protocol, device_id: e.device_id,
+      bytes_sent: e.bytes_sent ?? 0, score: s,
+    };
+  }));
 
   res.send(`<!DOCTYPE html><html><head><title>PirateShield - Network Model</title><style>${sharedStyles}
     .model-header { background: linear-gradient(135deg, #161b22 0%, #0d1117 100%); border: 1px solid #21262d; border-radius: 12px; padding: 24px 28px; margin-bottom: 24px; }
@@ -398,7 +408,7 @@ app.get("/", (req, res) => {
     </div>
 
     <div class="section">
-      <div class="section-title">Sample Data (${rawEvents.length} events - last 20 shown)</div>
+      <div class="section-title">Sample Data (<span id="sample-count">${rawEvents.length}</span> events - page <span id="sample-page-num">1</span>)</div>
       ${rawEvents.length === 0
         ? '<p style="color:#8b949e">No events yet. Click "Add 5 Network Events" to generate sample data for testing.</p>'
         : `<div style="overflow-x:auto">
@@ -407,13 +417,17 @@ app.get("/", (req, res) => {
               <th>Event ID</th><th>User</th><th>Event Type</th><th>Src IP</th>
               <th>Dst IP:Port</th><th>Protocol</th><th>Device</th><th>Bytes Sent</th><th>RT Score</th>
             </tr></thead>
-            <tbody>${sampleRows}</tbody>
+            <tbody id="sample-tbody"></tbody>
           </table>
+        </div>
+        <div style="margin-top:10px;display:flex;gap:8px;justify-content:center">
+          <button class="btn-orange" id="sample-prev" onclick="samplePage(-1)">Previous</button>
+          <button class="btn-orange" id="sample-next" onclick="samplePage(1)">Next</button>
         </div>`}
     </div>
 
     <div class="section">
-      <div class="section-title">Scored Results (${total} events - last 20 shown)</div>
+      <div class="section-title">Scored Results (<span id="scored-count">${total}</span> events - page <span id="scored-page-num">1</span>)</div>
       ${total === 0
         ? '<p style="color:#8b949e">No results yet. Click "Run Network Model" to score current network events.</p>'
         : `<div style="overflow-x:auto">
@@ -423,12 +437,69 @@ app.get("/", (req, res) => {
               <th>M01</th><th>M02</th><th>M03</th><th>M04</th><th>M05</th><th>M06</th><th>M07</th><th>M08</th>
               <th>Score</th><th>Severity</th><th>Alert</th>
             </tr></thead>
-            <tbody>${resultsRows}</tbody>
+            <tbody id="scored-tbody"></tbody>
           </table>
+        </div>
+        <div style="margin-top:10px;display:flex;gap:8px;justify-content:center">
+          <button class="btn-orange" id="scored-prev" onclick="scoredPage(-1)">Previous</button>
+          <button class="btn-orange" id="scored-next" onclick="scoredPage(1)">Next</button>
         </div>`}
     </div>
 
     <script>
+      const PAGE_SIZE = ${PAGE_SIZE};
+      const allSamples = ${allSamplesJson};
+      const allResults = ${allResultsJson};
+
+      let samplePageIdx = 0;
+      let scoredPageIdx = 0;
+
+      function badgeLvl(s) { return s >= 85 ? "critical" : s >= 60 ? "high" : s >= 35 ? "medium" : s >= 15 ? "low" : "none"; }
+
+      function renderSamplePage() {
+        const start = samplePageIdx * PAGE_SIZE;
+        const page = allSamples.slice(start, start + PAGE_SIZE);
+        const tbody = document.getElementById("sample-tbody");
+        if (!tbody) return;
+        tbody.innerHTML = page.map(e => {
+          const lvl = badgeLvl(e.score);
+          return "<tr><td><code>" + e.event_id + "...</code></td><td>" + e.user_id + "</td><td>" + e.event_type +
+            "</td><td>" + e.source_ip + "</td><td>" + e.dst + "</td><td>" + e.protocol +
+            "</td><td>" + e.device_id + "</td><td>" + (e.bytes_sent||0).toLocaleString() +
+            '</td><td><span class="badge badge-' + lvl + '">' + e.score + "</span></td></tr>";
+        }).join("");
+        const totalPages = Math.max(1, Math.ceil(allSamples.length / PAGE_SIZE));
+        document.getElementById("sample-page-num").textContent = (samplePageIdx + 1) + " / " + totalPages;
+        document.getElementById("sample-prev").disabled = samplePageIdx <= 0;
+        document.getElementById("sample-next").disabled = start + PAGE_SIZE >= allSamples.length;
+      }
+
+      function renderScoredPage() {
+        const start = scoredPageIdx * PAGE_SIZE;
+        const page = allResults.slice(start, start + PAGE_SIZE);
+        const tbody = document.getElementById("scored-tbody");
+        if (!tbody) return;
+        tbody.innerHTML = page.map(r => {
+          const lvl = badgeLvl(r.risk_score);
+          return "<tr><td>" + r.event_type + "</td><td>" + r.source_ip + "</td><td>" + r.destination_ip +
+            "</td><td>" + r.m01 + "</td><td>" + r.m02 + "</td><td>" + r.m03 + "</td><td>" + r.m04 +
+            "</td><td>" + r.m05 + "</td><td>" + r.m06 + "</td><td>" + r.m07 + "</td><td>" + r.m08 +
+            '</td><td><strong><span class="badge badge-' + lvl + '">' + r.risk_score + "</span></strong></td><td>" +
+            r.risk_label + "</td><td>" + (r.alert ? '<span style="color:#da3633">YES</span>' : '<span style="color:#8b949e">no</span>') + "</td></tr>";
+        }).join("");
+        const totalPages = Math.max(1, Math.ceil(allResults.length / PAGE_SIZE));
+        document.getElementById("scored-page-num").textContent = (scoredPageIdx + 1) + " / " + totalPages;
+        document.getElementById("scored-prev").disabled = scoredPageIdx <= 0;
+        document.getElementById("scored-next").disabled = start + PAGE_SIZE >= allResults.length;
+      }
+
+      function samplePage(dir) { samplePageIdx += dir; renderSamplePage(); }
+      function scoredPage(dir) { scoredPageIdx += dir; renderScoredPage(); }
+
+      // Initial render
+      if (allSamples.length > 0) renderSamplePage();
+      if (allResults.length > 0) renderScoredPage();
+
       async function addNet() {
         const btn = event.target; btn.disabled = true; btn.textContent = "Generating...";
         const r = await fetch("/api/add", { method:"POST" });
@@ -753,6 +824,10 @@ app.post("/ingest", (req, res) => {
         breakdown.m08 = userScore;
         breakdown.composite = userScore;
         breakdown.reasons = [`M08: Manual score ${userScore}`];
+
+        // Persist the manual override into the JSON so Sample Data can display it correctly
+        event._manual_score = userScore;
+        writeJson(fp, all);
       }
 
       db.prepare(`
@@ -814,7 +889,7 @@ app.post("/ingest-unified", (req, res) => {
   } else {
     const fp = path.join(__dirname, "data", "synthetic_events", "synthetic_network_events.json");
     const existing = readJson(fp);
-    if (!existing.some((x: any) => x.event_id === event.event_id)) writeJson(fp, [...existing, event]);
+    if (!existing.some((x: any) => x.event_id === event.event_id)) writeJson(fp, [event, ...existing]);
     const breakdown = scoreNetworkRules(event as Partial<NetworkEvent>);
     insertUnifiedEvent({ ...event, event_category: "network" }, breakdown.composite, breakdown);
   }
@@ -844,9 +919,72 @@ app.post("/api/run-network-model", (req, res) => {
       const results = JSON.parse(stdout);
       const outPath = path.join(__dirname, "data", "risk_scores", "network", "network_risk_scores.json");
       fs.mkdirSync(path.dirname(outPath), { recursive: true });
+
+      // Preserve manually-ingested scores that the Python model would overwrite
+      const eventsPath = path.join(__dirname, "data", "synthetic_events", "synthetic_network_events.json");
+      const rawEvts = readJson(eventsPath);
+      const manualScores = new Map<string, number>();
+      for (const e of rawEvts) {
+        if (typeof e._manual_score === "number") manualScores.set(e.event_id, e._manual_score);
+      }
+      for (const r of results) {
+        if (manualScores.has(r.event_id)) {
+          const ms = manualScores.get(r.event_id)!;
+          r.m01_score = 0; r.m02_score = 0; r.m03_score = 0; r.m04_score = 0;
+          r.m05_score = 0; r.m06_score = 0; r.m07_score = 0; r.m08_score = ms;
+          r.risk_score = ms;
+          r.risk_label = ms >= 85 ? "CRITICAL" : ms >= 60 ? "HIGH" : ms >= 35 ? "MEDIUM" : ms >= 15 ? "LOW" : "NONE";
+          r.alert = ms >= 60;
+        }
+      }
+
       fs.writeFileSync(outPath, JSON.stringify(results, null, 2));
 
-      const alertCount = results.filter((r: any) => r.alert).length;
+      const ruleNames: Record<string, string> = {
+        m01_score: "M01-ExcessiveOutbound",
+        m02_score: "M02-VPN/Proxy",
+        m03_score: "M03-AbnormalConnections",
+        m04_score: "M04-HighRiskPort",
+        m05_score: "M05-SuspiciousProtocol",
+        m06_score: "M06-UnknownDevice",
+        m07_score: "M07-Beaconing",
+        m08_score: "M08-ThreatType",
+      };
+
+      const updateNetScore = db.prepare("UPDATE network_events SET risk_score = @risk_score WHERE event_id = @event_id");
+      const updateUniScore = db.prepare("UPDATE unified_events SET risk_score = @risk_score WHERE event_id = @event_id");
+      const insertAlertStmt = db.prepare(`
+        INSERT OR IGNORE INTO alerts (event_id, user_id, device_id, severity, reason, risk_score)
+        VALUES (@event_id, @user_id, @device_id, @severity, @reason, @risk_score)
+      `);
+
+      let alertCount = 0;
+      for (const r of results) {
+        updateNetScore.run({ event_id: r.event_id, risk_score: r.risk_score });
+        updateUniScore.run({ event_id: r.event_id, risk_score: r.risk_score });
+
+        if (r.alert) {
+          const severity = getAlertSeverity(r.risk_score);
+          if (!severity) continue;
+
+          const fired: string[] = [];
+          for (const [col, name] of Object.entries(ruleNames)) {
+            if (r[col] && r[col] > 0) fired.push(`${name}(+${r[col]})`);
+          }
+          const reason = fired.length > 0 ? fired.join("; ") : "Risk threshold exceeded";
+
+          insertAlertStmt.run({
+            event_id: r.event_id ?? null,
+            user_id: r.user_id ?? null,
+            device_id: r.device_id ?? null,
+            severity,
+            reason,
+            risk_score: r.risk_score,
+          });
+          alertCount++;
+        }
+      }
+
       res.json({
         success: true,
         count: results.length,
@@ -912,21 +1050,40 @@ app.post("/api/add", (req, res) => {
     const fp = path.join(__dirname, "data", "synthetic_events", "synthetic_network_events.json");
     try {
       const all: NetworkEvent[] = JSON.parse(fs.readFileSync(fp, "utf-8"));
-      const newest = all.slice(-5);
+      // Track how many events existed before this generation to only ingest truly new ones
+      const prevCount = all.length - 5;
+      const newest = all.slice(Math.max(0, prevCount));
       const stmt = db.prepare(`
-        INSERT INTO network_events
+        INSERT OR IGNORE INTO network_events
           (event_id,user_id,timestamp,source_ip,destination_ip,destination_port,
            protocol,bytes_sent,bytes_received,device_id,event_type,payload,risk_score)
         VALUES
           (@event_id,@user_id,@timestamp,@source_ip,@destination_ip,@destination_port,
            @protocol,@bytes_sent,@bytes_received,@device_id,@event_type,@payload,@risk_score)
       `);
+      const scoresPath = path.join(__dirname, "data", "risk_scores", "network", "network_risk_scores.json");
+      const existingScores = readJson(scoresPath);
+      const existingIds = new Set(existingScores.map((s: any) => s.event_id));
+
       for (const e of newest) {
         const breakdown = scoreNetworkRules(e);
         const risk_score = breakdown.composite;
         stmt.run({ ...e, payload:JSON.stringify(e), risk_score });
         insertUnifiedEvent({ ...(e as any), event_category:"network" }, risk_score, breakdown);
+
+        // Also add to scored results JSON if not already there
+        if (!existingIds.has(e.event_id)) {
+          const riskLabel = risk_score >= 85 ? "CRITICAL" : risk_score >= 60 ? "HIGH" : risk_score >= 35 ? "MEDIUM" : risk_score >= 15 ? "LOW" : "NONE";
+          existingScores.push({
+            event_id: e.event_id, event_type: e.event_type,
+            source_ip: e.source_ip, destination_ip: e.destination_ip,
+            m01_score: breakdown.m01, m02_score: breakdown.m02, m03_score: breakdown.m03, m04_score: breakdown.m04,
+            m05_score: breakdown.m05, m06_score: breakdown.m06, m07_score: breakdown.m07, m08_score: breakdown.m08,
+            risk_score, risk_label: riskLabel, alert: risk_score >= 60,
+          });
+        }
       }
+      writeJson(scoresPath, existingScores);
 
       let chart: string | null = null;
       const chartMatch = stdout.match(/CHART_BASE64:(.+)/);
@@ -1001,6 +1158,80 @@ app.post("/api/reset-identity", (req, res) => {
     res.json({ success: true });
   } catch { res.status(500).json({ success: false, message: "Reset failed" }); }
 });
+
+// ---------------------------------------------------------------------------
+// Seed DB from existing JSON files on startup (only if tables are empty)
+// ---------------------------------------------------------------------------
+function seedFromJson() {
+  const networkCount = (db.prepare("SELECT COUNT(*) as cnt FROM network_events").get() as any).cnt;
+  if (networkCount > 0) return; // already seeded
+
+  const eventsPath = path.join(__dirname, "data", "synthetic_events", "synthetic_network_events.json");
+  const scoresPath = path.join(__dirname, "data", "risk_scores", "network", "network_risk_scores.json");
+  const rawEvents: NetworkEvent[] = readJson(eventsPath);
+  const scores: any[] = readJson(scoresPath);
+  if (rawEvents.length === 0) return;
+
+  const scoreMap = new Map<string, any>();
+  for (const s of scores) scoreMap.set(s.event_id, s);
+
+  const insertNet = db.prepare(`
+    INSERT OR IGNORE INTO network_events
+      (event_id,user_id,timestamp,source_ip,destination_ip,destination_port,
+       protocol,bytes_sent,bytes_received,device_id,event_type,payload,risk_score)
+    VALUES
+      (@event_id,@user_id,@timestamp,@source_ip,@destination_ip,@destination_port,
+       @protocol,@bytes_sent,@bytes_received,@device_id,@event_type,@payload,@risk_score)
+  `);
+  const insertUni = db.prepare(`
+    INSERT OR IGNORE INTO unified_events
+      (event_id, user_id, device_id, event_category, event_type, timestamp,
+       source_ip, destination_ip, destination_port, protocol,
+       bytes_sent, bytes_received, user_known_devices, lat, long, payload, risk_score)
+    VALUES
+      (@event_id, @user_id, @device_id, @event_category, @event_type, @timestamp,
+       @source_ip, @destination_ip, @destination_port, @protocol,
+       @bytes_sent, @bytes_received, @user_known_devices, @lat, @long, @payload, @risk_score)
+  `);
+  const insertAlert = db.prepare(`
+    INSERT OR IGNORE INTO alerts (event_id, user_id, device_id, severity, reason, risk_score)
+    VALUES (@event_id, @user_id, @device_id, @severity, @reason, @risk_score)
+  `);
+
+  for (const e of rawEvents) {
+    const scored = scoreMap.get(e.event_id);
+    const risk_score = scored ? scored.risk_score : (typeof e._manual_score === "number" ? e._manual_score : scoreNetworkRules(e).composite);
+    const shouldAlert = scored ? scored.alert === true : shouldGenerateNetworkAlert(risk_score);
+
+    insertNet.run({ ...e, payload: JSON.stringify(e), risk_score });
+    insertUni.run({
+      event_id: e.event_id, user_id: e.user_id, device_id: e.device_id,
+      event_category: "network", event_type: e.event_type,
+      timestamp: e.timestamp, source_ip: e.source_ip,
+      destination_ip: e.destination_ip, destination_port: e.destination_port,
+      protocol: e.protocol, bytes_sent: e.bytes_sent, bytes_received: e.bytes_received,
+      user_known_devices: e.user_known_devices ? JSON.stringify(e.user_known_devices) : null,
+      lat: (e as any).lat ?? null, long: (e as any).long ?? null,
+      payload: JSON.stringify(e), risk_score,
+    });
+
+    if (shouldAlert) {
+      const severity = getAlertSeverity(risk_score);
+      if (severity) {
+        const breakdown = scoreNetworkRules(e);
+        insertAlert.run({
+          event_id: e.event_id,
+          user_id: e.user_id ?? null,
+          device_id: e.device_id ?? null,
+          severity,
+          reason: breakdown.reasons.join("; ") || "Risk threshold exceeded",
+          risk_score,
+        });
+      }
+    }
+  }
+}
+seedFromJson();
 
 app.listen(PORT, () => {
   console.log(`PirateShield running at http://localhost:${PORT}`);

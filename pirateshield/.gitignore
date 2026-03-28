@@ -30,3 +30,6 @@ build/
 __pycache__/
 *.pyc
 *.pyo
+
+# SQLite database (regenerated on startup)
+*.db

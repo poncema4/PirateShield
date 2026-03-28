@@ -274,13 +274,11 @@ export function getAlertSeverity(score: number): AlertSeverity | null {
 
 export function shouldGenerateNetworkAlert(score: number, breakdown?: NetworkRiskBreakdown): boolean {
   if (score >= 60) return true;
-  if (!breakdown) return score >= 60;
-  const ruleMaxes: Record<string, number> = {
-    m01: 40, m02: 25, m03: 35, m04: 30, m05: 20, m06: 15, m07: 40, m08: 40,
-  };
-  for (const [key, max] of Object.entries(ruleMaxes)) {
-    const val = breakdown[key as keyof NetworkRiskBreakdown] as number;
-    if (typeof val === "number" && val >= max * 0.8) return true;
+  if (breakdown) {
+    const ruleMax: Record<string, number> = { m01: 40, m02: 25, m03: 35, m04: 30, m05: 20, m06: 15, m07: 40, m08: 40 };
+    for (const [key, max] of Object.entries(ruleMax)) {
+      if ((breakdown as any)[key] >= max * 0.8) return true;
+    }
   }
   return false;
 }
