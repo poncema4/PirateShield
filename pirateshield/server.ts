@@ -1,6 +1,7 @@
 import express from "express";
 import fs from "fs";
 import path from "path";
+import crypto from "crypto";
 import { fileURLToPath } from "url";
 import { spawn } from "child_process";
 import db from "./db.ts";
@@ -8,9 +9,12 @@ import {
   calculateRiskScore,
   calculateUnifiedRisk,
   scoreDeviceEvent,
+  scoreNetworkRules,
+  shouldGenerateNetworkAlert,
   getAlertSeverity,
   type UnifiedEvent,
   type DeviceEvent,
+  type NetworkRiskBreakdown,
 } from "./risk_scoring.ts";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -18,6 +22,12 @@ const __dirname  = path.dirname(__filename);
 
 const app  = express();
 const PORT = 3000;
+
+const PYTHON = fs.existsSync(path.join(__dirname, ".venv", "bin", "python3"))
+  ? path.join(__dirname, ".venv", "bin", "python3")
+  : fs.existsSync(path.join(__dirname, ".venv", "Scripts", "python.exe"))
+    ? path.join(__dirname, ".venv", "Scripts", "python.exe")
+    : "python";
 
 export interface NetworkEvent {
   user_id: string;
@@ -38,7 +48,14 @@ export interface NetworkEvent {
 
 app.use(express.json());
 
-function maybeCreateAlert(event: Partial<UnifiedEvent | DeviceEvent>, risk_score: number) {
+function maybeCreateAlert(event: Partial<UnifiedEvent | DeviceEvent>, risk_score: number, breakdown?: NetworkRiskBreakdown) {
+  const cat = (event as UnifiedEvent).event_category;
+  if (cat === "network" && breakdown) {
+    if (!shouldGenerateNetworkAlert(risk_score, breakdown)) return;
+  } else {
+    const severity = getAlertSeverity(risk_score);
+    if (!severity) return;
+  }
   const severity = getAlertSeverity(risk_score);
   if (!severity) return;
   const { reasons } = calculateUnifiedRisk(event as Partial<UnifiedEvent>);
@@ -55,7 +72,7 @@ function maybeCreateAlert(event: Partial<UnifiedEvent | DeviceEvent>, risk_score
   });
 }
 
-function insertUnifiedEvent(event: Partial<UnifiedEvent>, risk_score: number) {
+function insertUnifiedEvent(event: Partial<UnifiedEvent>, risk_score: number, breakdown?: NetworkRiskBreakdown) {
   db.prepare(`
     INSERT OR IGNORE INTO unified_events
       (event_id, user_id, device_id, event_category, event_type, timestamp,
@@ -84,7 +101,7 @@ function insertUnifiedEvent(event: Partial<UnifiedEvent>, risk_score: number) {
     payload:          JSON.stringify(event),
     risk_score,
   });
-  maybeCreateAlert(event, risk_score);
+  maybeCreateAlert(event, risk_score, breakdown);
 }
 
 function readJson(fp: string): any[] {
@@ -101,7 +118,7 @@ function writeJson(fp: string, data: any[]) {
 function ingestDeviceEvent(e: any) {
   const norm: DeviceEvent = { ...e, user_id: e.user ?? e.user_id, usb_action: e.action ?? e.usb_action };
   const { score: risk_score } = scoreDeviceEvent(norm);
-  const fp = path.join(__dirname, "data", "synthetic_device_events.json");
+  const fp = path.join(__dirname, "data", "synthetic_events", "synthetic_device_events.json");
   const existing = readJson(fp);
   if (!existing.some((x: any) => x.event_id === e.event_id)) writeJson(fp, [...existing, e]);
   try {
@@ -138,7 +155,7 @@ function ingestDeviceEvent(e: any) {
 
 function ingestIdentityEvent(e: any) {
   const risk_score = e.risk_score ?? 0;
-  const fp = path.join(__dirname, "data", "synthetic_identity_events.json");
+  const fp = path.join(__dirname, "data", "synthetic_events", "synthetic_identity_events.json");
   const existing = readJson(fp);
   const alreadyExists = existing.some((x: any) => x.event_id === e.event_id);
   if (!alreadyExists) writeJson(fp, [...existing, e]);
@@ -174,56 +191,69 @@ function ingestIdentityEvent(e: any) {
 }
 
 const sharedStyles = `
-  body { font-family: Arial, sans-serif; max-width: 1100px; margin: 40px auto; padding: 20px; background: #f8f9fa; }
-  nav { display: flex; gap: 10px; margin-bottom: 26px; flex-wrap: wrap; }
-  nav a { padding: 8px 16px; border-radius: 6px; text-decoration: none; background: #007bff; color: white; font-size: 14px; }
-  nav a:hover { background: #0056b3; }
-  nav a.active { background: #343a40; }
-  h1 { margin-bottom: 6px; }
-  .controls { margin: 14px 0; display: flex; gap: 10px; flex-wrap: wrap; }
-  button { padding: 8px 16px; font-size: 14px; cursor: pointer; border: none; border-radius: 5px; color: white; }
-  .btn-green  { background: #28a745; } .btn-green:hover  { background: #218838; }
-  .btn-blue   { background: #007bff; } .btn-blue:hover   { background: #0056b3; }
-  .btn-red    { background: #dc3545; } .btn-red:hover    { background: #c82333; }
-  .btn-orange { background: #fd7e14; } .btn-orange:hover { background: #e8680d; }
-  .btn-purple { background: #6610f2; } .btn-purple:hover { background: #520dc2; }
-  button:disabled { opacity: 0.55; cursor: not-allowed; }
-  .card { border: 1px solid #ddd; padding: 13px 16px; margin: 8px 0; border-radius: 6px; background: white; font-size: 13px; }
-  .risk-critical { border-left: 5px solid #6f0000; }
-  .risk-high     { border-left: 5px solid #dc3545; }
-  .risk-medium   { border-left: 5px solid #ffc107; }
-  .risk-low      { border-left: 5px solid #28a745; }
-  .risk-none     { border-left: 5px solid #ced4da; }
-  .badge { display:inline-block; padding:2px 8px; border-radius:10px; font-size:11px; font-weight:bold; color:white; margin-left:5px; }
-  .badge-critical  { background:#6f0000; }
-  .badge-high      { background:#dc3545; }
-  .badge-medium    { background:#ffc107; color:#333; }
-  .badge-low       { background:#28a745; }
-  .badge-none      { background:#adb5bd; color:#333; }
-  .badge-network   { background:#007bff; }
-  .badge-identity  { background:#6610f2; }
-  .badge-device    { background:#17a2b8; }
-  .badge-suspicious{ background:#dc3545; }
-  .badge-clean     { background:#28a745; }
-  .status { padding:10px; margin:10px 0; border-radius:5px; display:none; }
+  * { box-sizing: border-box; }
+  body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; max-width: 1200px; margin: 0 auto; padding: 24px 20px; background: #0d1117; color: #c9d1d9; }
+  nav { display: flex; gap: 6px; margin-bottom: 26px; flex-wrap: wrap; padding: 10px 0; border-bottom: 1px solid #21262d; }
+  nav a { padding: 8px 18px; border-radius: 6px; text-decoration: none; background: #21262d; color: #c9d1d9; font-size: 13px; font-weight: 500; transition: all 0.15s; }
+  nav a:hover { background: #30363d; color: #f0f6fc; }
+  nav a.active { background: #1f6feb; color: #ffffff; }
+  h1 { margin-bottom: 4px; color: #f0f6fc; font-size: 24px; letter-spacing: -0.3px; }
+  h2 { color: #f0f6fc; font-size: 18px; margin-top: 28px; margin-bottom: 12px; }
+  .subtitle { color: #8b949e; font-size: 13px; margin-top: 0; margin-bottom: 20px; }
+  .controls { margin: 14px 0; display: flex; gap: 8px; flex-wrap: wrap; }
+  button { padding: 8px 16px; font-size: 13px; cursor: pointer; border: 1px solid #30363d; border-radius: 6px; color: #c9d1d9; font-weight: 500; transition: all 0.15s; }
+  .btn-green  { background: #238636; border-color: #238636; color: white; } .btn-green:hover  { background: #2ea043; }
+  .btn-blue   { background: #1f6feb; border-color: #1f6feb; color: white; } .btn-blue:hover   { background: #388bfd; }
+  .btn-red    { background: #da3633; border-color: #da3633; color: white; } .btn-red:hover    { background: #f85149; }
+  .btn-orange { background: #d29922; border-color: #d29922; color: white; } .btn-orange:hover { background: #e3b341; }
+  .btn-purple { background: #8957e5; border-color: #8957e5; color: white; } .btn-purple:hover { background: #a371f7; }
+  .btn-gray   { background: #21262d; } .btn-gray:hover { background: #30363d; }
+  button:disabled { opacity: 0.4; cursor: not-allowed; }
+  .card { border: 1px solid #21262d; padding: 12px 16px; margin: 6px 0; border-radius: 8px; background: #161b22; font-size: 13px; line-height: 1.5; }
+  .risk-critical { border-left: 4px solid #da3633; }
+  .risk-high     { border-left: 4px solid #f85149; }
+  .risk-medium   { border-left: 4px solid #d29922; }
+  .risk-low      { border-left: 4px solid #3fb950; }
+  .risk-none     { border-left: 4px solid #30363d; }
+  .badge { display:inline-block; padding:2px 8px; border-radius:10px; font-size:11px; font-weight:600; color:white; margin-right:4px; }
+  .badge-critical  { background:#da3633; }
+  .badge-high      { background:#f85149; }
+  .badge-medium    { background:#d29922; color:#1c1c1c; }
+  .badge-low       { background:#3fb950; color:#1c1c1c; }
+  .badge-none      { background:#30363d; color:#8b949e; }
+  .badge-network   { background:#1f6feb; }
+  .badge-identity  { background:#8957e5; }
+  .badge-device    { background:#39d353; color:#1c1c1c; }
+  .badge-suspicious{ background:#da3633; }
+  .badge-clean     { background:#238636; }
+  .status { padding:10px 14px; margin:10px 0; border-radius:6px; display:none; font-size:13px; }
   .status.show { display:block; }
-  .status.success { background:#d4edda; color:#155724; }
-  .status.error   { background:#f8d7da; color:#721c24; }
-  .stat-row { display:flex; gap:14px; flex-wrap:wrap; margin-bottom:18px; }
-  .stat-box { background:white; border:1px solid #ddd; border-radius:8px; padding:12px 20px; flex:1; min-width:120px; text-align:center; }
-  .stat-box .num { font-size:26px; font-weight:bold; }
-  .stat-box .lbl { font-size:12px; color:#666; }
-  .ack-btn { padding:3px 9px; font-size:11px; background:#6c757d; color:white; border:none; border-radius:4px; cursor:pointer; margin-left:6px; }
-  .ack-btn:hover { background:#545b62; }
-  .alert-acked { opacity:0.42; }
+  .status.success { background:#1a3a2a; color:#3fb950; border:1px solid #238636; }
+  .status.error   { background:#3a1a1a; color:#f85149; border:1px solid #da3633; }
+  .stat-row { display:flex; gap:12px; flex-wrap:wrap; margin-bottom:18px; }
+  .stat-box { background:#161b22; border:1px solid #21262d; border-radius:8px; padding:14px 20px; flex:1; min-width:110px; text-align:center; }
+  .stat-box .num { font-size:28px; font-weight:700; color:#f0f6fc; }
+  .stat-box .lbl { font-size:11px; color:#8b949e; text-transform:uppercase; letter-spacing:0.5px; margin-top:4px; }
+  .ack-btn { padding:3px 9px; font-size:11px; background:#21262d; color:#c9d1d9; border:1px solid #30363d; border-radius:4px; cursor:pointer; margin-left:6px; }
+  .ack-btn:hover { background:#30363d; }
+  .alert-acked { opacity:0.35; }
+  table { width:100%; border-collapse:collapse; font-size:12px; }
+  th { background:#161b22; color:#8b949e; text-transform:uppercase; font-size:10px; letter-spacing:0.5px; padding:8px 10px; text-align:left; border-bottom:1px solid #21262d; }
+  td { padding:7px 10px; border-bottom:1px solid #21262d; color:#c9d1d9; }
+  tr:hover td { background:#161b22; }
+  code { background:#21262d; padding:1px 5px; border-radius:4px; font-size:12px; color:#79c0ff; }
+  a { color:#58a6ff; }
+  .todo-card { border:2px dashed #30363d; padding:40px 30px; border-radius:12px; text-align:center; background:#161b22; margin-top:20px; }
+  .todo-card h2 { color:#8b949e; margin:0 0 8px 0; }
+  .todo-card p { color:#484f58; font-size:14px; margin:0; }
 `;
 
 const navBar = (active: string) => `<nav>
-  <a href="/"            ${active === "net"      ? 'class="active"' : ""}>Network Events</a>
-  <a href="/devices"     ${active === "dev"      ? 'class="active"' : ""}>Device Events</a>
-  <a href="/unified"     ${active === "unified"  ? 'class="active"' : ""}>Unified Stream</a>
-  <a href="/alerts"      ${active === "alerts"   ? 'class="active"' : ""}>Alerts</a>
-  <a href="/ingest"   ${active === "ingest"   ? 'class="active"' : ""}>Ingest</a>
+  <a href="/"                 ${active === "model"    ? 'class="active"' : ""}>Network Model</a>
+  <a href="/identity-model"   ${active === "identity" ? 'class="active"' : ""}>Identity Model</a>
+  <a href="/device-model"     ${active === "device"   ? 'class="active"' : ""}>Device Model</a>
+  <a href="/alerts"           ${active === "alerts"   ? 'class="active"' : ""}>Alerts</a>
+  <a href="/ingest"           ${active === "ingest"   ? 'class="active"' : ""}>Ingest</a>
 </nav>`;
 
 const statusScript = () => `
@@ -237,170 +267,277 @@ const statusScript = () => `
     }
   </script>`;
 
-function riskCard(score: number, catBadge: string, main: string, sub: string) {
-  const lvl = score >= 85 ? "critical" : score >= 60 ? "high" : score >= 35 ? "medium" : score >= 15 ? "low" : "none";
-  return `<div class="card risk-${lvl}">
-    <span class="badge badge-${lvl}">Risk: ${score}</span>
-    <span class="badge badge-${catBadge}">${catBadge}</span>
-    ${main}<br><span style="color:#666">${sub}</span>
-  </div>`;
-}
-
+// ===========================================================================
+// Network Model Page (main page)
+// ===========================================================================
 app.get("/", (req, res) => {
-  const fp = path.join(__dirname, "data", "synthetic_network_events.json");
-  let events: NetworkEvent[] = [];
-  if (fs.existsSync(fp)) events = readJson(fp);
+  const scoresPath = path.join(__dirname, "data", "risk_scores", "network", "network_risk_scores.json");
+  let results: any[] = [];
+  if (fs.existsSync(scoresPath)) {
+    try { results = JSON.parse(fs.readFileSync(scoresPath, "utf-8")); } catch {}
+  }
 
-  res.send(`<!DOCTYPE html><html><head><title>PirateShield</title><style>${sharedStyles}</style></head><body>
-    <h1>PirateShield</h1>${navBar("net")}${statusScript()}
-    <div class="controls">
-      <button class="btn-green" onclick="addNet()">Add 5 Network Events</button>
-      <button class="btn-orange"  onclick="location.reload()">Refresh</button>
-      <button class="btn-red"   onclick="resetAll()">Reset All Data</button>
+  const fp = path.join(__dirname, "data", "synthetic_events", "synthetic_network_events.json");
+  let rawEvents: NetworkEvent[] = [];
+  if (fs.existsSync(fp)) rawEvents = readJson(fp);
+
+  const total = results.length;
+  const alertCount = results.filter((r: any) => r.alert).length;
+  const criticalCount = results.filter((r: any) => r.risk_label === "CRITICAL").length;
+  const highCount = results.filter((r: any) => r.risk_label === "HIGH").length;
+  const avgScore = total > 0 ? (results.reduce((s: number, r: any) => s + r.risk_score, 0) / total).toFixed(1) : "---";
+
+  const dbEvents = db.prepare("SELECT COUNT(*) as cnt FROM network_events").get() as any;
+  const dbAlerts = db.prepare("SELECT COUNT(*) as cnt FROM alerts").get() as any;
+
+  const rulesTable = `
+    <table>
+      <thead><tr><th>Rule</th><th>Name</th><th>Max</th><th>Description</th><th>Baseline</th></tr></thead>
+      <tbody>
+        <tr><td><strong>M01</strong></td><td>Excessive Outbound Traffic</td><td>+40</td><td>Bytes sent exceeds device baseline or absolute threshold (&gt;5MB = +40, &gt;1MB = +25)</td><td>14-day rolling</td></tr>
+        <tr><td><strong>M02</strong></td><td>VPN / Proxy Destination</td><td>+25</td><td>Destination IP in known suspicious list (+15) or port in VPN/proxy list (+15)</td><td>---</td></tr>
+        <tr><td><strong>M03</strong></td><td>Abnormal Connection Burst</td><td>+35</td><td>Unique destination IPs per source exceeds threshold (&gt;100 = +35, &gt;50 = +25)</td><td>14-day rolling</td></tr>
+        <tr><td><strong>M04</strong></td><td>High-Risk Port Access</td><td>+30</td><td>Connection to high-risk ports (4444/1337/6667 = +30, 22/23/3389/5900 = +25)</td><td>14-day rolling</td></tr>
+        <tr><td><strong>M05</strong></td><td>Suspicious Protocol</td><td>+20</td><td>RAW protocol = +20, ICMP = +10</td><td>---</td></tr>
+        <tr><td><strong>M06</strong></td><td>Unknown Device</td><td>+15</td><td>Device ID not in user's known device list</td><td>---</td></tr>
+        <tr><td><strong>M07</strong></td><td>C2 Beaconing Detection</td><td>+40</td><td>Low inter-arrival time variance for src/dst pair indicates periodic callbacks</td><td>Variance analysis</td></tr>
+        <tr><td><strong>M08</strong></td><td>Threat Event Classification</td><td>+40</td><td>c2_beacon/malware = +40, data_exfil/brute_force/lateral_movement = +35, port_scan = +20</td><td>---</td></tr>
+      </tbody>
+    </table>`;
+
+  const resultsRows = results.slice(-20).map((r: any) => {
+    const lvl = r.risk_score >= 85 ? "critical" : r.risk_score >= 60 ? "high" : r.risk_score >= 35 ? "medium" : r.risk_score >= 15 ? "low" : "none";
+    return `<tr>
+      <td>${r.event_type ?? "---"}</td>
+      <td>${r.source_ip ?? "---"}</td>
+      <td>${r.destination_ip ?? "---"}</td>
+      <td>${r.m01_score ?? 0}</td><td>${r.m02_score ?? 0}</td><td>${r.m03_score ?? 0}</td><td>${r.m04_score ?? 0}</td>
+      <td>${r.m05_score ?? 0}</td><td>${r.m06_score ?? 0}</td><td>${r.m07_score ?? 0}</td><td>${r.m08_score ?? 0}</td>
+      <td><strong><span class="badge badge-${lvl}">${r.risk_score}</span></strong></td>
+      <td>${r.risk_label}</td>
+      <td>${r.alert ? '<span style="color:#da3633">YES</span>' : '<span style="color:#8b949e">no</span>'}</td>
+    </tr>`;
+  }).join("");
+
+  const sampleRows = rawEvents.slice(-20).map((e: any) => {
+    const breakdown = scoreNetworkRules(e);
+    const s = breakdown.composite;
+    const lvl = s >= 85 ? "critical" : s >= 60 ? "high" : s >= 35 ? "medium" : s >= 15 ? "low" : "none";
+    return `<tr>
+      <td><code>${e.event_id?.slice(0,8)}...</code></td>
+      <td>${e.user_id}</td>
+      <td>${e.event_type}</td>
+      <td>${e.source_ip}</td>
+      <td>${e.destination_ip}:${e.destination_port}</td>
+      <td>${e.protocol}</td>
+      <td>${e.device_id}</td>
+      <td>${(e.bytes_sent ?? 0).toLocaleString()}</td>
+      <td><span class="badge badge-${lvl}">${s}</span></td>
+    </tr>`;
+  }).join("");
+
+  res.send(`<!DOCTYPE html><html><head><title>PirateShield - Network Model</title><style>${sharedStyles}
+    .model-header { background: linear-gradient(135deg, #161b22 0%, #0d1117 100%); border: 1px solid #21262d; border-radius: 12px; padding: 24px 28px; margin-bottom: 24px; }
+    .model-header h2 { margin: 0 0 8px 0; font-size: 20px; }
+    .model-header p { margin: 0; color: #8b949e; font-size: 13px; line-height: 1.6; }
+    .formula-box { background: #161b22; border: 1px solid #21262d; border-radius: 8px; padding: 16px 20px; margin: 16px 0; font-family: 'Courier New', monospace; font-size: 13px; color: #79c0ff; line-height: 1.8; }
+    .section { margin-top: 32px; }
+    .section-title { font-size: 14px; text-transform: uppercase; letter-spacing: 1px; color: #8b949e; margin-bottom: 12px; border-bottom: 1px solid #21262d; padding-bottom: 6px; }
+    table th { position: sticky; top: 0; }
+    .run-output { background: #0d1117; border: 1px solid #21262d; border-radius: 8px; padding: 16px; margin-top: 12px; font-family: monospace; font-size: 12px; white-space: pre-wrap; max-height: 400px; overflow-y: auto; display: none; color: #c9d1d9; }
+    .run-output.show { display: block; }
+    #chart-container { margin-top:16px; text-align:center; }
+    #chart-container img { max-width:100%; border-radius:8px; border:1px solid #21262d; }
+  </style></head><body>
+    <h1>PirateShield</h1>
+    <p class="subtitle">Network Threat Detection for K-12 Environments</p>
+    ${navBar("model")}${statusScript()}
+
+    <div class="model-header">
+      <h2>Network Anomaly Detection Model</h2>
+      <p>Rule-based risk scoring engine implementing rules M01-M08. Produces composite risk scores on a 0-100 scale.
+         Alerts are generated when composite score &gt;= 60 OR any single rule raw score &gt;= 80% of its maximum.
+         The model supports batch analysis with 14-day rolling baselines and C2 beaconing detection via inter-arrival time variance.</p>
     </div>
-    <p><strong>Total Network Events:</strong> ${events.length}</p>
-    ${events.length === 0
-      ? `<p style="color:#999">No events yet. Click "Add 5 Network Events" to generate data.</p>`
-      : events.map(e => {
-          const s = calculateRiskScore(e);
-          const lvl = s >= 60 ? "high" : s >= 30 ? "medium" : "none";
-          return `<div class="card risk-${lvl}">
-            <span class="badge badge-${s >= 60 ? "high" : s >= 30 ? "medium" : "none"}">Risk: ${s}</span>
-            <span class="badge badge-network">network</span>
-            <strong> ${e.user_id}</strong> | <code>${e.event_id}</code> &mdash; ${e.timestamp}<br>
-            <span style="color:#666">${e.source_ip} &rarr; ${e.destination_ip}:${e.destination_port} (${e.protocol}) &nbsp;|&nbsp;
-            Device: <strong>${e.device_id}</strong> &nbsp;|&nbsp;
-            Sent: ${e.bytes_sent.toLocaleString()} B &nbsp;|&nbsp; Rcvd: ${e.bytes_received.toLocaleString()} B</span>
-          </div>`;
-        }).join("")}
+
+    <div class="stat-row">
+      <div class="stat-box"><div class="num">${rawEvents.length}</div><div class="lbl">Raw Events</div></div>
+      <div class="stat-box"><div class="num">${total}</div><div class="lbl">Scored</div></div>
+      <div class="stat-box"><div class="num">${avgScore}</div><div class="lbl">Avg Score</div></div>
+      <div class="stat-box"><div class="num" style="color:#da3633">${criticalCount}</div><div class="lbl">Critical</div></div>
+      <div class="stat-box"><div class="num" style="color:#f85149">${highCount}</div><div class="lbl">High</div></div>
+      <div class="stat-box"><div class="num" style="color:#d29922">${alertCount}</div><div class="lbl">Alerts</div></div>
+      <div class="stat-box"><div class="num">${dbEvents.cnt}</div><div class="lbl">DB Events</div></div>
+      <div class="stat-box"><div class="num">${dbAlerts.cnt}</div><div class="lbl">DB Alerts</div></div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Composite Formula</div>
+      <div class="formula-box">
+        composite = min(100, M01 + M02 + M03 + M04 + M05 + M06 + M07 + M08)<br><br>
+        Alert Condition: composite &gt;= 60 OR any rule_raw &gt;= rule_max * 0.8<br><br>
+        Severity:  NONE [0-14]  |  LOW [15-34]  |  MEDIUM [35-59]  |  HIGH [60-84]  |  CRITICAL [85-100]
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Rule Definitions (M01 - M08)</div>
+      ${rulesTable}
+    </div>
+
+    <div class="section">
+      <div class="section-title">Run Model</div>
+      <div class="controls">
+        <button class="btn-green" onclick="addNet()">Add 5 Network Events</button>
+        <button class="btn-blue" id="run-btn" onclick="runModel()">Run Network Model</button>
+        <button class="btn-gray" onclick="location.reload()">Refresh</button>
+        <button class="btn-red" onclick="resetAll()">Reset All Network Data</button>
+      </div>
+      <div id="run-output" class="run-output"></div>
+      <div id="chart-container"></div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Sample Data (${rawEvents.length} events - last 20 shown)</div>
+      ${rawEvents.length === 0
+        ? '<p style="color:#8b949e">No events yet. Click "Add 5 Network Events" to generate sample data for testing.</p>'
+        : `<div style="overflow-x:auto">
+          <table>
+            <thead><tr>
+              <th>Event ID</th><th>User</th><th>Event Type</th><th>Src IP</th>
+              <th>Dst IP:Port</th><th>Protocol</th><th>Device</th><th>Bytes Sent</th><th>RT Score</th>
+            </tr></thead>
+            <tbody>${sampleRows}</tbody>
+          </table>
+        </div>`}
+    </div>
+
+    <div class="section">
+      <div class="section-title">Scored Results (${total} events - last 20 shown)</div>
+      ${total === 0
+        ? '<p style="color:#8b949e">No results yet. Click "Run Network Model" to score current network events.</p>'
+        : `<div style="overflow-x:auto">
+          <table>
+            <thead><tr>
+              <th>Event Type</th><th>Src IP</th><th>Dst IP</th>
+              <th>M01</th><th>M02</th><th>M03</th><th>M04</th><th>M05</th><th>M06</th><th>M07</th><th>M08</th>
+              <th>Score</th><th>Severity</th><th>Alert</th>
+            </tr></thead>
+            <tbody>${resultsRows}</tbody>
+          </table>
+        </div>`}
+    </div>
+
     <script>
       async function addNet() {
         const btn = event.target; btn.disabled = true; btn.textContent = "Generating...";
         const r = await fetch("/api/add", { method:"POST" });
         const d = await r.json();
-        if (d.success) { showStatus("Added 5 network events!", "success"); setTimeout(() => location.reload(), 900); }
+        if (d.success) {
+          showStatus("Added 5 network events", "success");
+          if (d.chart) {
+            document.getElementById("chart-container").innerHTML = '<img src="data:image/png;base64,' + d.chart + '" alt="Event Distribution Chart"/>';
+          }
+          setTimeout(() => location.reload(), 1200);
+        }
         else { showStatus("Failed: " + d.message, "error"); btn.disabled = false; btn.textContent = "Add 5 Network Events"; }
       }
       async function resetAll() {
-        if (!confirm("Delete all network events? This cannot be undone.")) return;
+        if (!confirm("Delete all network data (events, scores, alerts)? This cannot be undone.")) return;
         const r = await fetch("/api/reset", { method:"POST" });
         const d = await r.json();
-        if (d.success) { showStatus("All network events cleared", "error"); setTimeout(() => location.reload(), 900); }
+        if (d.success) { showStatus("All network data cleared", "success"); setTimeout(() => location.reload(), 900); }
       }
-    </script>
-  </body></html>`);
-});
-
-app.get("/devices", (req, res) => {
-  const raw = readJson(path.join(__dirname, "data", "synthetic_device_events.json"));
-  const events: DeviceEvent[] = raw.map((e: any) => ({
-    ...e,
-    user_id:    e.user    ?? e.user_id,
-    usb_action: e.action  ?? e.usb_action,
-  }));
-
-  res.send(`<!DOCTYPE html><html><head><title>PirateShield</title><style>${sharedStyles}</style></head><body>
-    <h1>PirateShield</h1>${navBar("dev")}${statusScript()}
-    <div class="controls">
-      <button class="btn-green" onclick="addDevice()">Add 5 Device Events</button>
-      <button class="btn-orange" onclick="location.reload()">Refresh</button>
-      <button class="btn-red"   onclick="resetDevice()">Reset All Data</button>
-    </div>
-    <p><strong>Total Device Events:</strong> ${events.length}</p>
-    ${events.length === 0
-      ? `<p style="color:#999">No events yet. Click "Add 5 Device Events" to generate data.</p>`
-      : events.map(e => {
-          const { score, reasons } = scoreDeviceEvent(e);
-          const lvl = score >= 85 ? "critical" : score >= 60 ? "high" : score >= 35 ? "medium" : score >= 15 ? "low" : "none";
-          let detail = "";
-          if (e.event_type === "process_start")
-            detail = `Process: <strong>${e.process_name}</strong> (${e.process_path})`;
-          else if (e.event_type === "cpu_spike")
-            detail = `CPU: <strong>${e.cpu_percent}%</strong> vs baseline ${e.baseline_cpu}% for ${e.duration_seconds}s`;
-          else if (e.event_type === "usb_event")
-            detail = `USB: <strong>${(e as any).usb_id}</strong> &mdash; ${(e as any).action ?? e.usb_action}${e.new_executable_started ? " &nbsp;<strong style='color:red'>EXE LAUNCHED</strong>" : ""}`;
-          else if (e.event_type === "security_change")
-            detail = `Security: <strong>${e.component}</strong> changed to <strong>${e.new_status}</strong>`;
-
-          return `<div class="card risk-${lvl}">
-            <span class="badge badge-${lvl}">Risk: ${score}</span>
-            <span class="badge badge-device">device</span>
-            ${e.suspicious ? '<span class="badge badge-suspicious">SUSPICIOUS</span>' : '<span class="badge badge-clean">clean</span>'}
-            <strong> ${e.user_id ?? (e as any).user}</strong> | <code>${e.event_id}</code> &mdash; ${e.timestamp}<br>
-            <span style="color:#666">Device: <strong>${e.device_id}</strong> (${e.device_type}) &nbsp;|&nbsp; ${detail}</span>
-            ${reasons.length > 0 ? `<br><span style="color:#c00;font-size:12px">&#9888; ${reasons.join(" &nbsp;&bull;&nbsp; ")}</span>` : ""}
-          </div>`;
-        }).join("")}
-    <script>
-      async function addDevice() {
-        const btn = event.target; btn.disabled = true; btn.textContent = "Generating...";
+      async function runModel() {
+        const btn = document.getElementById("run-btn");
+        btn.disabled = true; btn.textContent = "Running...";
+        const out = document.getElementById("run-output");
+        out.className = "run-output show";
+        out.textContent = "Executing network model (network_model.py)...\\n";
         try {
-          const r = await fetch("/api/add-device", { method: "POST" });
+          const r = await fetch("/api/run-network-model", { method: "POST" });
           const d = await r.json();
-          if (d.success) { showStatus("Added 5 device events!", "success"); setTimeout(() => location.reload(), 900); }
-          else { showStatus("Failed: " + d.message, "error"); btn.disabled = false; btn.textContent = "Add 5 Device Events"; }
-        } catch(err) { showStatus("Error: " + err.message, "error"); btn.disabled = false; btn.textContent = "Add 5 Device Events"; }
-      }
-      async function resetDevice() {
-        if (!confirm("Delete all device events? This cannot be undone.")) return;
-        try {
-          const r = await fetch("/api/reset-device", { method: "POST" });
-          const d = await r.json();
-          if (d.success) { showStatus("All device events cleared", "error"); setTimeout(() => location.reload(), 900); }
-        } catch(err) { showStatus("Error: " + err.message, "error"); }
+          if (d.success) {
+            out.textContent += d.output || ("Scored " + d.count + " events. " + d.alerts + " alerts generated.\\n");
+            showStatus("Model run complete", "success");
+            setTimeout(() => location.reload(), 2000);
+          } else {
+            out.textContent += "ERROR: " + (d.message || "Unknown error") + "\\n";
+            showStatus("Model run failed", "error");
+          }
+        } catch(err) {
+          out.textContent += "ERROR: " + err.message + "\\n";
+          showStatus("Model run failed", "error");
+        }
+        btn.disabled = false; btn.textContent = "Run Network Model";
       }
     </script>
   </body></html>`);
 });
 
-app.get("/unified", (req, res) => {
-  const events = db.prepare("SELECT * FROM unified_events ORDER BY created_at DESC LIMIT 200").all() as any[];
-  const counts = { network:0, identity:0, device:0 };
-  for (const e of events) if (e.event_category in counts) counts[e.event_category as keyof typeof counts]++;
+// ===========================================================================
+// Identity Model Page
+// ===========================================================================
+app.get("/identity-model", (req, res) => {
+  res.send(`<!DOCTYPE html><html><head><title>PirateShield - Identity Model</title><style>${sharedStyles}
+    .todo-container { background: linear-gradient(135deg, #161b22 0%, #0d1117 100%); border: 1px solid #21262d; border-radius: 12px; padding: 40px; margin-top: 24px; text-align: center; }
+    .todo-container h2 { margin: 0 0 16px 0; font-size: 22px; color: #a371f7; }
+    .todo-container p { color: #8b949e; font-size: 14px; line-height: 1.8; max-width: 600px; margin: 0 auto; }
+    .todo-list { text-align: left; max-width: 500px; margin: 24px auto 0; }
+    .todo-list li { color: #c9d1d9; font-size: 13px; margin-bottom: 10px; line-height: 1.5; }
+    .todo-list li span { color: #8b949e; }
+  </style></head><body>
+    <h1>PirateShield</h1>
+    <p class="subtitle">Network Threat Detection for K-12 Environments</p>
+    ${navBar("identity")}
 
-  res.send(`<!DOCTYPE html><html><head><title>PirateShield</title><style>${sharedStyles}</style></head><body>
-    <h1>PirateShield</h1>${navBar("unified")}${statusScript()}
-    <div class="controls">
-      <button class="btn-green"  onclick="inject('identity')">Inject Identity Event</button>
-      <button class="btn-orange" onclick="location.reload()">Refresh</button>
+    <div class="todo-container">
+      <h2>Identity &amp; User Behavior Model</h2>
+      <p>This section is under construction. The identity model will detect authentication and user behavior anomalies.</p>
+      <ul class="todo-list">
+        <li>Build identity event ingestion pipeline <span>- accept login, authentication, and session events</span></li>
+        <li>Implement risk scoring rules <span>- failed logins, brute force, new devices, impossible travel</span></li>
+        <li>Create identity event dashboard <span>- table view with login stats and suspicious flags</span></li>
+        <li>Generate synthetic identity events <span>- Python script to simulate realistic login patterns</span></li>
+        <li>Integrate with unified alerts system <span>- fire alerts when identity risk score exceeds threshold</span></li>
+      </ul>
     </div>
-    <div class="stat-row">
-      <div class="stat-box"><div class="num">${events.length}</div><div class="lbl">Total</div></div>
-      <div class="stat-box"><div class="num" style="color:#007bff">${counts.network}</div><div class="lbl">Network</div></div>
-      <div class="stat-box"><div class="num" style="color:#6610f2">${counts.identity}</div><div class="lbl">Identity</div></div>
-      <div class="stat-box"><div class="num" style="color:#17a2b8">${counts.device}</div><div class="lbl">Device</div></div>
-    </div>
-    ${events.length === 0
-      ? `<p style="color:#999">No unified events yet. Add network events or load device events.</p>`
-      : events.map((e: any) => {
-          const s = e.risk_score;
-          const lvl = s >= 85 ? "critical" : s >= 60 ? "high" : s >= 35 ? "medium" : s >= 15 ? "low" : "none";
-          return `<div class="card risk-${lvl}">
-            <span class="badge badge-${lvl}">Risk: ${s}</span>
-            <span class="badge badge-${e.event_category}">${e.event_category}</span>
-            <span class="badge" style="background:#555">${e.event_type ?? "n/a"}</span>
-            <strong> ${e.user_id ?? "—"}</strong> | Device: ${e.device_id ?? "—"} &mdash; <span style="color:#666">${e.timestamp ?? e.created_at}</span>
-            ${e.source_ip ? `<br><span style="color:#666">${e.source_ip} &rarr; ${e.destination_ip}:${e.destination_port} (${e.protocol})</span>` : ""}
-          </div>`;
-        }).join("")}
-    <script>
-      const ID_SAMPLES = [
-        {event_category:"identity",event_type:"failed_login",user_id:"student1",device_id:"host-A",user_known_devices:["host-A","host-B"],login_success:false,login_attempts:1},
-        {event_category:"identity",event_type:"brute_force_login",user_id:"teacher2",device_id:"unknown-device-99",user_known_devices:["host-B","host-C"],login_success:false,login_attempts:8,new_device:true},
-        {event_category:"identity",event_type:"new_device_login",user_id:"it_staff3",device_id:"host-X",user_known_devices:["host-C","host-D"],login_success:true,new_device:true}
-      ];
-      async function inject(cat) {
-        const pool = cat === "identity" ? ID_SAMPLES : [];
-        const s = {...pool[Math.floor(Math.random()*pool.length)], event_id: crypto.randomUUID(), timestamp: new Date().toISOString()};
-        const r = await fetch("/ingest-unified",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(s)});
-        const d = await r.json();
-        showStatus("Injected! Risk: " + d.risk_score, "success");
-        setTimeout(() => location.reload(), 900);
-      }
-    </script>
   </body></html>`);
 });
 
+// ===========================================================================
+// Device Model Page
+// ===========================================================================
+app.get("/device-model", (req, res) => {
+  res.send(`<!DOCTYPE html><html><head><title>PirateShield - Device Model</title><style>${sharedStyles}
+    .todo-container { background: linear-gradient(135deg, #161b22 0%, #0d1117 100%); border: 1px solid #21262d; border-radius: 12px; padding: 40px; margin-top: 24px; text-align: center; }
+    .todo-container h2 { margin: 0 0 16px 0; font-size: 22px; color: #39d353; }
+    .todo-container p { color: #8b949e; font-size: 14px; line-height: 1.8; max-width: 600px; margin: 0 auto; }
+    .todo-list { text-align: left; max-width: 500px; margin: 24px auto 0; }
+    .todo-list li { color: #c9d1d9; font-size: 13px; margin-bottom: 10px; line-height: 1.5; }
+    .todo-list li span { color: #8b949e; }
+  </style></head><body>
+    <h1>PirateShield</h1>
+    <p class="subtitle">Network Threat Detection for K-12 Environments</p>
+    ${navBar("device")}
+
+    <div class="todo-container">
+      <h2>Device Anomaly Detection Model</h2>
+      <p>This section is under construction. The device model will detect endpoint-level threats on student and staff devices.</p>
+      <ul class="todo-list">
+        <li>Build device event ingestion pipeline <span>- accept process, CPU, USB, and security change events</span></li>
+        <li>Implement risk scoring rules <span>- suspicious processes, CPU spikes, USB executables, disabled security</span></li>
+        <li>Create device event dashboard <span>- table view with filtering and stats</span></li>
+        <li>Generate synthetic device events <span>- Python script to simulate realistic endpoint activity</span></li>
+        <li>Integrate with unified alerts system <span>- fire alerts when device risk score exceeds threshold</span></li>
+      </ul>
+    </div>
+  </body></html>`);
+});
+
+// ===========================================================================
+// Alerts Page
+// ===========================================================================
 app.get("/alerts", (req, res) => {
   const alerts = db.prepare("SELECT * FROM alerts ORDER BY created_at DESC LIMIT 200").all() as any[];
   const counts = { critical:0, high:0, medium:0, low:0, unacked:0 };
@@ -409,34 +546,47 @@ app.get("/alerts", (req, res) => {
     if (!a.acknowledged) counts.unacked++;
   }
 
-  res.send(`<!DOCTYPE html><html><head><title>PirateShield</title><style>${sharedStyles}</style></head><body>
-    <h1>PirateShield</h1>${navBar("alerts")}${statusScript()}
+  res.send(`<!DOCTYPE html><html><head><title>PirateShield - Alerts</title><style>${sharedStyles}</style></head><body>
+    <h1>PirateShield</h1>
+    <p class="subtitle">Network Threat Detection for K-12 Environments</p>
+    ${navBar("alerts")}${statusScript()}
     <div class="controls">
       <button class="btn-green" onclick="ackAll()">Acknowledge All</button>
-      <button class="btn-orange"   onclick="location.reload()">Refresh</button>
+      <button class="btn-gray"   onclick="location.reload()">Refresh</button>
     </div>
     <div class="stat-row">
+      <div class="stat-box"><div class="num">${alerts.length}</div><div class="lbl">Total Alerts</div></div>
       <div class="stat-box"><div class="num">${counts.unacked}</div><div class="lbl">Unacknowledged</div></div>
-      <div class="stat-box"><div class="num" style="color:#6f0000">${counts.critical}</div><div class="lbl">Critical</div></div>
-      <div class="stat-box"><div class="num" style="color:#dc3545">${counts.high}</div><div class="lbl">High</div></div>
-      <div class="stat-box"><div class="num" style="color:#856404">${counts.medium}</div><div class="lbl">Medium</div></div>
-      <div class="stat-box"><div class="num" style="color:#155724">${counts.low}</div><div class="lbl">Low</div></div>
+      <div class="stat-box"><div class="num" style="color:#da3633">${counts.critical}</div><div class="lbl">Critical</div></div>
+      <div class="stat-box"><div class="num" style="color:#f85149">${counts.high}</div><div class="lbl">High</div></div>
+      <div class="stat-box"><div class="num" style="color:#d29922">${counts.medium}</div><div class="lbl">Medium</div></div>
+      <div class="stat-box"><div class="num" style="color:#3fb950">${counts.low}</div><div class="lbl">Low</div></div>
     </div>
+
     ${alerts.length === 0
-      ? `<p style="color:#999">No alerts yet. Events scoring &ge; 15 appear here automatically.</p>`
-      : alerts.map((a: any) => {
-          const lvl = a.severity;
-          return `<div class="card risk-${lvl} ${a.acknowledged ? "alert-acked" : ""}">
-            <span class="badge badge-${lvl}">${lvl.toUpperCase()}</span>
-            <strong> ${a.user_id ?? "unknown"}</strong> | Device: ${a.device_id ?? "—"}
-            ${!a.acknowledged
-              ? `<button class="ack-btn" onclick="ack(${a.id})">&#10003; Acknowledge</button>`
-              : `<span style="font-size:11px;color:#999;margin-left:8px">&#10003; Acknowledged</span>`}
-            <br><strong>Reason:</strong> ${a.reason}
-            <br><strong>Score:</strong> ${a.risk_score} &nbsp;|&nbsp; ${a.created_at}
-            ${a.event_id ? `<br><code style="font-size:11px">${a.event_id}</code>` : ""}
-          </div>`;
-        }).join("")}
+      ? '<p style="color:#8b949e">No alerts yet. Add network events or use the Ingest page to generate alerts.</p>'
+      : `<div style="overflow-x:auto">
+        <table>
+          <thead><tr><th>ID</th><th>Severity</th><th>User</th><th>Device</th><th>Score</th><th>Reason</th><th>Event ID</th><th>Time</th><th>Status</th></tr></thead>
+          <tbody>${alerts.map((a: any) => {
+            const lvl = a.severity;
+            return `<tr class="${a.acknowledged ? "alert-acked" : ""}">
+              <td>${a.id}</td>
+              <td><span class="badge badge-${lvl}">${lvl.toUpperCase()}</span></td>
+              <td>${a.user_id ?? "---"}</td>
+              <td>${a.device_id ?? "---"}</td>
+              <td><strong>${a.risk_score}</strong></td>
+              <td style="max-width:350px;word-wrap:break-word">${a.reason}</td>
+              <td><code>${a.event_id ? a.event_id.slice(0,8) + "..." : "---"}</code></td>
+              <td style="white-space:nowrap">${a.created_at}</td>
+              <td>${!a.acknowledged
+                ? '<button class="ack-btn" onclick="ack(' + a.id + ')">Ack</button>'
+                : '<span style="color:#8b949e;font-size:11px">Acked</span>'}</td>
+            </tr>`;
+          }).join("")}</tbody>
+        </table>
+      </div>`}
+
     <script>
       async function ack(id) {
         await fetch("/api/alerts/"+id+"/ack",{method:"POST"});
@@ -452,219 +602,203 @@ app.get("/alerts", (req, res) => {
   </body></html>`);
 });
 
+// ===========================================================================
+// Ingest page
+// ===========================================================================
 app.get("/ingest", (req, res) => {
-  res.send(`<!DOCTYPE html><html><head><title>PirateShield – Ingest</title><style>${sharedStyles}
-    .itabs{display:flex;gap:0;margin-bottom:0}
-    .itab{background:#e9ecef;color:#333;border:1px solid #ced4da;border-bottom:none;border-radius:6px 6px 0 0;padding:9px 22px;font-size:14px;cursor:pointer;margin-right:4px}
-    .itab.active{background:#343a40;color:white;border-color:#343a40}
-    .ipanel{display:none;background:white;border:1px solid #ced4da;border-radius:0 6px 6px 6px;padding:26px}
-    .ipanel.active{display:block}
+  res.send(`<!DOCTYPE html><html><head><title>PirateShield - Ingest</title><style>${sharedStyles}
     .fg{display:flex;flex-direction:column;gap:4px}
     .fgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px 20px}
-    .full{grid-column:1/-1}
-    label{font-size:11px;font-weight:bold;color:#555;text-transform:uppercase;letter-spacing:.4px}
-    input,select{padding:7px 10px;border:1px solid #ced4da;border-radius:4px;font-size:13px;width:100%;box-sizing:border-box}
-    input:focus,select:focus{outline:none;border-color:#007bff;box-shadow:0 0 0 2px rgba(0,123,255,.15)}
+    label{font-size:10px;font-weight:600;color:#8b949e;text-transform:uppercase;letter-spacing:.5px}
+    input,select{padding:7px 10px;border:1px solid #30363d;border-radius:6px;font-size:13px;width:100%;box-sizing:border-box;background:#0d1117;color:#c9d1d9}
+    input:focus,select:focus{outline:none;border-color:#1f6feb;box-shadow:0 0 0 2px rgba(31,111,235,.2)}
     .rbox{margin-top:12px;padding:11px 14px;border-radius:6px;font-size:13px;display:none}
-    .rbox.show{display:block} .rbox.ok{background:#d4edda;color:#155724;border:1px solid #c3e6cb}
-    .rbox.err{background:#f8d7da;color:#721c24;border:1px solid #f5c6cb}
+    .rbox.show{display:block} .rbox.ok{background:#1a3a2a;color:#3fb950;border:1px solid #238636}
+    .rbox.err{background:#3a1a1a;color:#f85149;border:1px solid #da3633}
+    .score-slider{display:flex;align-items:center;gap:12px}
+    .score-slider input[type=range]{flex:1}
+    .score-val{font-size:28px;font-weight:700;color:#f0f6fc;min-width:50px;text-align:center}
+    .tabs{display:flex;gap:0;margin-bottom:20px;border-bottom:2px solid #30363d}
+    .tab{padding:10px 24px;cursor:pointer;font-size:14px;font-weight:600;color:#8b949e;border:none;background:none;border-bottom:2px solid transparent;margin-bottom:-2px;transition:color .15s,border-color .15s}
+    .tab:hover{color:#c9d1d9}
+    .tab.active{color:#58a6ff;border-bottom-color:#58a6ff}
+    .tab-content{display:none}
+    .tab-content.active{display:block}
+    .todo-box{background:#161b22;border:1px solid #30363d;border-radius:8px;padding:40px;max-width:500px;text-align:center}
+    .todo-box h3{color:#8b949e;font-size:18px;margin:0 0 8px 0}
+    .todo-box p{color:#484f58;font-size:14px;margin:0}
   </style></head><body>
-    <h1>PirateShield</h1>${navBar("ingest")}
+    <h1>PirateShield</h1>
+    <p class="subtitle">Network Threat Detection for K-12 Environments</p>
+    ${navBar("ingest")}
     <h2 style="margin-bottom:4px">Manual Event Ingest</h2>
-    <p style="color:#666;font-size:13px;margin-top:0;margin-bottom:18px">
-      Every submission writes to <strong>4 destinations</strong>:
-      type-specific DB table &rarr; <code>unified_events</code> &rarr; <code>alerts</code> (if score &ge; 15) &rarr; matching <code>.json</code> file.
+    <p style="color:#8b949e;font-size:13px;margin-top:0;margin-bottom:18px">
+      Select an event type and set a risk score (0-100). The event is ingested through the model system, written to DB and scored results.
     </p>
 
-    <div class="itabs">
-      <button class="itab active" onclick="switchTab('network',this)">&#127760; Network</button>
-      <button class="itab"        onclick="switchTab('identity',this)">&#128100; Identity</button>
-      <button class="itab"        onclick="switchTab('device',this)">&#128187; Device</button>
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('network')">Network</button>
+      <button class="tab" onclick="switchTab('identity')">Identity</button>
+      <button class="tab" onclick="switchTab('device')">Device</button>
     </div>
 
-    <!-- NETWORK -->
-    <div id="tab-network" class="ipanel active">
-      <div class="fgrid">
-        <div class="fg"><label>User ID</label><input id="n-uid" placeholder="e.g. student1"/></div>
-        <div class="fg"><label>Device ID</label><input id="n-did" placeholder="e.g. host-A"/></div>
-        <div class="fg"><label>Source IP</label><input id="n-sip" placeholder="e.g. 192.168.1.10"/></div>
-        <div class="fg"><label>Destination IP</label><input id="n-dip" placeholder="e.g. 10.0.0.5"/></div>
-        <div class="fg"><label>Destination Port</label><input id="n-dport" type="number" placeholder="e.g. 443"/></div>
-        <div class="fg"><label>Protocol</label>
-          <select id="n-proto"><option>TCP</option><option>UDP</option><option>ICMP</option><option>RAW</option></select>
+    <div id="tab-network" class="tab-content active">
+      <div style="background:#161b22;border:1px solid #30363d;border-radius:8px;padding:26px;max-width:500px">
+        <div class="fgrid">
+          <div class="fg" style="grid-column:1/-1">
+            <label>Event Type</label>
+            <select id="n-etype">
+              <option value="network_connection">network_connection</option>
+              <option value="dns_lookup">dns_lookup</option>
+              <option value="file_transfer">file_transfer</option>
+              <option value="vpn_connection">vpn_connection</option>
+              <option value="unusual_login">unusual_login</option>
+              <option value="port_scan">port_scan</option>
+              <option value="brute_force">brute_force</option>
+              <option value="data_exfil">data_exfil</option>
+              <option value="malware">malware</option>
+              <option value="lateral_movement">lateral_movement</option>
+              <option value="c2_beacon">c2_beacon</option>
+            </select>
+          </div>
+          <div class="fg" style="grid-column:1/-1">
+            <label>Risk Score</label>
+            <div class="score-slider">
+              <input type="range" id="n-score" min="0" max="100" value="50" oninput="document.getElementById('score-display').textContent=this.value"/>
+              <span id="score-display" class="score-val">50</span>
+            </div>
+          </div>
         </div>
-        <div class="fg"><label>Event Type</label>
-          <select id="n-etype">
-            <option value="normal_traffic">normal_traffic</option><option value="vpn_connection">vpn_connection</option>
-            <option value="port_scan">port_scan</option><option value="brute_force">brute_force</option>
-            <option value="data_exfil">data_exfil</option><option value="malware">malware</option>
-            <option value="lateral_movement">lateral_movement</option><option value="c2_beacon">c2_beacon</option>
-          </select>
-        </div>
-        <div class="fg"><label>Bytes Sent</label><input id="n-bsent" type="number" value="1024"/></div>
-        <div class="fg"><label>Bytes Received</label><input id="n-brecv" type="number" value="2048"/></div>
-        <div class="fg"><label>Latitude</label><input id="n-lat" type="number" placeholder="40.71"/></div>
-        <div class="fg"><label>Longitude</label><input id="n-long" type="number" placeholder="-74.00"/></div>
-        <div class="fg full"><label>Known Devices (comma-separated)</label><input id="n-kd" placeholder="host-A,host-B"/></div>
+        <div style="margin-top:16px"><button class="btn-blue" onclick="submitNetwork()">Submit Event</button></div>
+        <div id="n-result" class="rbox"></div>
       </div>
-      <div style="margin-top:16px"><button class="btn-blue" onclick="submitNetwork()">&#8679; Submit Network Event</button></div>
-      <div id="n-result" class="rbox"></div>
     </div>
 
-    <!-- IDENTITY -->
-    <div id="tab-identity" class="ipanel">
-      <div class="fgrid">
-        <div class="fg"><label>User ID</label><input id="i-uid" placeholder="e.g. teacher2"/></div>
-        <div class="fg"><label>Device ID</label><input id="i-did" placeholder="e.g. host-B"/></div>
-        <div class="fg"><label>Event Type</label>
-          <select id="i-etype">
-            <option value="failed_login">failed_login</option><option value="brute_force_login">brute_force_login</option>
-            <option value="new_device_login">new_device_login</option><option value="successful_login">successful_login</option>
-            <option value="password_change">password_change</option><option value="account_locked">account_locked</option>
-          </select>
-        </div>
-        <div class="fg"><label>Login Success</label>
-          <select id="i-success"><option value="false">No (failed)</option><option value="true">Yes</option></select>
-        </div>
-        <div class="fg"><label>Login Attempts</label><input id="i-attempts" type="number" value="1" min="1"/></div>
-        <div class="fg"><label>New / Unknown Device?</label>
-          <select id="i-newdev"><option value="false">No</option><option value="true">Yes</option></select>
-        </div>
-        <div class="fg"><label>OS Change?</label>
-          <select id="i-oschg"><option value="false">No</option><option value="true">Yes</option></select>
-        </div>
-        <div class="fg full"><label>Known Devices (comma-separated)</label><input id="i-kd" placeholder="host-A,host-B"/></div>
+    <div id="tab-identity" class="tab-content">
+      <div class="todo-box">
+        <h3>Identity Ingest</h3>
+        <p>TODO</p>
       </div>
-      <div style="margin-top:16px"><button class="btn-purple" onclick="submitIdentity()">&#8679; Submit Identity Event</button></div>
-      <div id="i-result" class="rbox"></div>
     </div>
 
-    <!-- DEVICE -->
-    <div id="tab-device" class="ipanel">
-      <div class="fgrid">
-        <div class="fg"><label>User ID</label><input id="d-uid" placeholder="e.g. it_staff3"/></div>
-        <div class="fg"><label>Device ID</label><input id="d-did" placeholder="e.g. host-C"/></div>
-        <div class="fg"><label>Device Type</label>
-          <select id="d-dtype"><option value="laptop">laptop</option><option value="desktop">desktop</option><option value="server">server</option></select>
-        </div>
-        <div class="fg"><label>Event Type</label>
-          <select id="d-etype" onchange="toggleDevFields(this.value)">
-            <option value="process_start">process_start</option><option value="cpu_spike">cpu_spike</option>
-            <option value="usb_event">usb_event</option><option value="security_change">security_change</option>
-          </select>
-        </div>
+    <div id="tab-device" class="tab-content">
+      <div class="todo-box">
+        <h3>Device Ingest</h3>
+        <p>TODO</p>
       </div>
-      <div id="df-process" style="margin-top:12px"><div class="fgrid">
-        <div class="fg"><label>Process Name</label><input id="d-pname" placeholder="e.g. nmap"/></div>
-        <div class="fg"><label>Process Path</label><input id="d-ppath" placeholder="e.g. /usr/bin/nmap"/></div>
-        <div class="fg"><label>Flagged Suspicious?</label><select id="d-susp"><option value="false">No</option><option value="true">Yes</option></select></div>
-      </div></div>
-      <div id="df-cpu" style="display:none;margin-top:12px"><div class="fgrid">
-        <div class="fg"><label>CPU %</label><input id="d-cpu" type="number" placeholder="95"/></div>
-        <div class="fg"><label>Baseline CPU %</label><input id="d-bcpu" type="number" placeholder="20"/></div>
-        <div class="fg"><label>Duration (s)</label><input id="d-dur" type="number" placeholder="720"/></div>
-      </div></div>
-      <div id="df-usb" style="display:none;margin-top:12px"><div class="fgrid">
-        <div class="fg"><label>USB ID</label><input id="d-usbid" placeholder="USB001"/></div>
-        <div class="fg"><label>USB Action</label><select id="d-usbact"><option value="inserted">inserted</option><option value="removed">removed</option></select></div>
-        <div class="fg"><label>New Executable Started?</label><select id="d-newexe"><option value="false">No</option><option value="true">Yes</option></select></div>
-        <div class="fg"><label>Exe Path</label><input id="d-exepath" placeholder="/media/usb/run.exe"/></div>
-      </div></div>
-      <div id="df-sec" style="display:none;margin-top:12px"><div class="fgrid">
-        <div class="fg"><label>Component</label><input id="d-comp" placeholder="firewall"/></div>
-        <div class="fg"><label>New Status</label><select id="d-nstatus"><option value="disabled">disabled</option><option value="enabled">enabled</option></select></div>
-      </div></div>
-      <div style="margin-top:16px"><button style="background:#17a2b8;color:white;padding:8px 16px;border:none;border-radius:5px;font-size:14px;cursor:pointer" onclick="submitDevice()">&#8679; Submit Device Event</button></div>
-      <div id="d-result" class="rbox"></div>
     </div>
 
     <script>
-      function switchTab(name,btn){
-        document.querySelectorAll('.ipanel').forEach(p=>p.classList.remove('active'));
-        document.querySelectorAll('.itab').forEach(b=>b.classList.remove('active'));
-        document.getElementById('tab-'+name).classList.add('active'); btn.classList.add('active');
+      function switchTab(name){
+        document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
+        document.getElementById('tab-'+name).classList.add('active');
+        document.querySelector('.tab[onclick="switchTab(\\''+name+'\\')"]').classList.add('active');
       }
-      function toggleDevFields(type){
-        ['process','cpu','usb','sec'].forEach(k=>document.getElementById('df-'+k).style.display='none');
-        const map={process_start:'process',cpu_spike:'cpu',usb_event:'usb',security_change:'sec'};
-        if(map[type]) document.getElementById('df-'+map[type]).style.display='block';
-      }
+
       function res(id,msg,ok){const el=document.getElementById(id);el.textContent=msg;el.className='rbox show '+(ok?'ok':'err');}
-      const v=id=>document.getElementById(id)?.value??'';
-      const num=id=>{const n=parseFloat(v(id));return isNaN(n)?null:n;};
-      const bool=id=>v(id)==='true';
 
       async function submitNetwork(){
-        const payload={event_id:crypto.randomUUID(),timestamp:new Date().toISOString(),
-          user_id:v('n-uid')||'unknown',device_id:v('n-did')||null,
-          source_ip:v('n-sip')||null,destination_ip:v('n-dip')||null,
-          destination_port:num('n-dport'),protocol:v('n-proto'),event_type:v('n-etype'),
-          bytes_sent:num('n-bsent')??0,bytes_received:num('n-brecv')??0,
-          lat:num('n-lat'),long:num('n-long'),
-          user_known_devices:v('n-kd').split(',').map(s=>s.trim()).filter(Boolean)};
-        try{const r=await fetch('/ingest',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+        const payload={
+          event_type: document.getElementById('n-etype').value,
+          risk_score: parseInt(document.getElementById('n-score').value)
+        };
+        try{
+          const r=await fetch('/ingest',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
           const d=await r.json();
-          r.ok?res('n-result','✓ Risk: '+d.risk_score+' — network_events + unified_events + alerts + .json',true)
-              :res('n-result','✗ '+(d.error||JSON.stringify(d)),false);
-        }catch(e){res('n-result','✗ '+e.message,false);}
-      }
-
-      async function submitIdentity(){
-        const payload={event_id:crypto.randomUUID(),timestamp:new Date().toISOString(),
-          event_category:'identity',user_id:v('i-uid')||'unknown',device_id:v('i-did')||null,
-          event_type:v('i-etype'),login_success:bool('i-success'),
-          login_attempts:num('i-attempts')??1,new_device:bool('i-newdev'),os_change:bool('i-oschg'),
-          user_known_devices:v('i-kd').split(',').map(s=>s.trim()).filter(Boolean)};
-        try{const r=await fetch('/ingest-unified',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
-          const d=await r.json();
-          r.ok?res('i-result','✓ Risk: '+d.risk_score+' — identity_events + unified_events + alerts + .json',true)
-              :res('i-result','✗ '+(d.error||JSON.stringify(d)),false);
-        }catch(e){res('i-result','✗ '+e.message,false);}
-      }
-
-      async function submitDevice(){
-        const etype=v('d-etype');
-        const payload={event_id:crypto.randomUUID(),timestamp:new Date().toISOString(),
-          event_category:'device',user_id:v('d-uid')||'unknown',device_id:v('d-did')||null,
-          device_type:v('d-dtype'),event_type:etype,
-          ...(etype==='process_start'?{process_name:v('d-pname'),process_path:v('d-ppath'),suspicious:bool('d-susp')}:{}),
-          ...(etype==='cpu_spike'?{cpu_percent:num('d-cpu'),baseline_cpu:num('d-bcpu'),duration_seconds:num('d-dur')}:{}),
-          ...(etype==='usb_event'?{usb_id:v('d-usbid'),usb_action:v('d-usbact'),new_executable_started:bool('d-newexe'),exe_path:v('d-exepath')||null}:{}),
-          ...(etype==='security_change'?{component:v('d-comp'),new_status:v('d-nstatus')}:{})};
-        try{const r=await fetch('/ingest-unified',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
-          const d=await r.json();
-          r.ok?res('d-result','✓ Risk: '+d.risk_score+' — device_events + unified_events + alerts + .json',true)
-              :res('d-result','✗ '+(d.error||JSON.stringify(d)),false);
-        }catch(e){res('d-result','✗ '+e.message,false);}
+          if(r.ok){res('n-result','Score: '+d.risk_score+' | Rules: M01='+d.rules.m01+' M02='+d.rules.m02+' M03='+d.rules.m03+' M04='+d.rules.m04+' M05='+d.rules.m05+' M06='+d.rules.m06+' M07='+d.rules.m07+' M08='+d.rules.m08+' | Saved. Redirecting...', true);
+            setTimeout(()=>window.location.href='/',1500);
+          } else{res('n-result','Error: '+(d.error||JSON.stringify(d)),false);}
+        }catch(e){res('n-result','Error: '+e.message,false);}
       }
     </script>
   </body></html>`);
 });
 
+// ===========================================================================
+// API endpoints
+// ===========================================================================
 app.post("/ingest", (req, res) => {
-  const event: Partial<NetworkEvent> = req.body;
-  if (!event || typeof event !== "object") return res.status(400).json({ error: "Invalid payload" });
+  const body = req.body;
+  if (!body || typeof body !== "object") return res.status(400).json({ error: "Invalid payload" });
 
-  const fp = path.join(__dirname, "data", "synthetic_network_events.json");
-  const existing = readJson(fp);
-  if (!existing.some((x: any) => x.event_id === event.event_id)) writeJson(fp, [...existing, event]);
+  const eventType = body.event_type;
+  const userScore = typeof body.risk_score === "number" ? Math.max(0, Math.min(100, body.risk_score)) : null;
 
-  const risk_score = calculateRiskScore(event);
-  try {
-    db.prepare(`
-      INSERT OR IGNORE INTO network_events
-        (event_id,user_id,timestamp,source_ip,destination_ip,destination_port,
-         protocol,bytes_sent,bytes_received,device_id,event_type,payload,risk_score)
-      VALUES
-        (@event_id,@user_id,@timestamp,@source_ip,@destination_ip,@destination_port,
-         @protocol,@bytes_sent,@bytes_received,@device_id,@event_type,@payload,@risk_score)
-    `).run({ ...event, payload: JSON.stringify(event), risk_score });
-  } catch (err) {
-    console.error("Error inserting network event:", err);
-  }
+  const scriptPath = path.join(__dirname, "scripts", "network_model", "generate_network_events.py");
+  const python = spawn(PYTHON, [scriptPath, "--count", "1", "--event-type", eventType], { cwd: __dirname });
+  let stdout = "";
+  let stderr = "";
+  python.stdout.on("data", (d: Buffer) => { stdout += d.toString(); });
+  python.stderr.on("data", (d: Buffer) => { stderr += d.toString(); });
+  python.on("close", (code) => {
+    if (code !== 0) return res.status(500).json({ error: stderr || "Python script failed" });
+    const fp = path.join(__dirname, "data", "synthetic_events", "synthetic_network_events.json");
+    try {
+      const all: NetworkEvent[] = JSON.parse(fs.readFileSync(fp, "utf-8"));
+      const event = all[all.length - 1];
 
-  insertUnifiedEvent({ ...(event as any), event_category: "network" }, risk_score);
-  res.status(201).json({ message: "Event ingested", risk_score });
+      const breakdown = scoreNetworkRules(event);
+      const risk_score = userScore !== null ? userScore : breakdown.composite;
+
+      // When user manually sets a score, zero out all rule metrics and only set m08
+      if (userScore !== null) {
+        breakdown.m01 = 0;
+        breakdown.m02 = 0;
+        breakdown.m03 = 0;
+        breakdown.m04 = 0;
+        breakdown.m05 = 0;
+        breakdown.m06 = 0;
+        breakdown.m07 = 0;
+        breakdown.m08 = userScore;
+        breakdown.composite = userScore;
+        breakdown.reasons = [`M08: Manual score ${userScore}`];
+      }
+
+      db.prepare(`
+        INSERT OR IGNORE INTO network_events
+          (event_id,user_id,timestamp,source_ip,destination_ip,destination_port,
+           protocol,bytes_sent,bytes_received,device_id,event_type,payload,risk_score)
+        VALUES
+          (@event_id,@user_id,@timestamp,@source_ip,@destination_ip,@destination_port,
+           @protocol,@bytes_sent,@bytes_received,@device_id,@event_type,@payload,@risk_score)
+      `).run({
+        ...event,
+        payload: JSON.stringify({ ...event, rules: { m01: breakdown.m01, m02: breakdown.m02, m03: breakdown.m03, m04: breakdown.m04, m05: breakdown.m05, m06: breakdown.m06, m07: breakdown.m07, m08: breakdown.m08 } }),
+        risk_score,
+      });
+
+      insertUnifiedEvent({ ...(event as any), event_category: "network" }, risk_score, breakdown);
+
+      const scoresPath = path.join(__dirname, "data", "risk_scores", "network", "network_risk_scores.json");
+      const existingScores = readJson(scoresPath);
+      const riskLabel = risk_score >= 85 ? "CRITICAL" : risk_score >= 60 ? "HIGH" : risk_score >= 35 ? "MEDIUM" : risk_score >= 15 ? "LOW" : "NONE";
+      existingScores.push({
+        event_id: event.event_id,
+        event_type: event.event_type,
+        source_ip: event.source_ip,
+        destination_ip: event.destination_ip,
+        m01_score: breakdown.m01,
+        m02_score: breakdown.m02,
+        m03_score: breakdown.m03,
+        m04_score: breakdown.m04,
+        m05_score: breakdown.m05,
+        m06_score: breakdown.m06,
+        m07_score: breakdown.m07,
+        m08_score: breakdown.m08,
+        risk_score,
+        risk_label: riskLabel,
+        alert: risk_score >= 60,
+      });
+      writeJson(scoresPath, existingScores);
+
+      res.status(201).json({ message: "Event ingested", risk_score, rules: { m01: breakdown.m01, m02: breakdown.m02, m03: breakdown.m03, m04: breakdown.m04, m05: breakdown.m05, m06: breakdown.m06, m07: breakdown.m07, m08: breakdown.m08 } });
+    } catch (err) {
+      console.error("Error ingesting event:", err);
+      res.status(500).json({ error: "Failed to ingest event" });
+    }
+  });
+  python.on("error", (err) => res.status(500).json({ error: (err as Error).message }));
 });
 
 app.post("/ingest-unified", (req, res) => {
@@ -678,86 +812,104 @@ app.post("/ingest-unified", (req, res) => {
   } else if (event.event_category === "device") {
     ingestDeviceEvent({ ...event, risk_score });
   } else {
-    const fp = path.join(__dirname, "data", "synthetic_network_events.json");
+    const fp = path.join(__dirname, "data", "synthetic_events", "synthetic_network_events.json");
     const existing = readJson(fp);
     if (!existing.some((x: any) => x.event_id === event.event_id)) writeJson(fp, [...existing, event]);
-    insertUnifiedEvent({ ...event, event_category: "network" }, risk_score);
+    const breakdown = scoreNetworkRules(event as Partial<NetworkEvent>);
+    insertUnifiedEvent({ ...event, event_category: "network" }, breakdown.composite, breakdown);
   }
 
   res.status(201).json({ message: "Unified event ingested", risk_score });
 });
 
-app.post("/api/load-device-events", (req, res) => {
-  const fp = path.join(__dirname, "data", "synthetic_device_events.json");
-  if (!fs.existsSync(fp)) return res.status(404).json({ success:false, message:"synthetic_device_events.json not found" });
+// --- Run network model ---
+app.post("/api/run-network-model", (req, res) => {
+  const writeDb = req.query.db === "1";
+  const args = [
+    path.join(__dirname, "scripts", "network_model", "network_model.py"),
+    "--json",
+  ];
+  if (writeDb) args.push("--db");
 
-  let raw: any[];
-  try { raw = JSON.parse(fs.readFileSync(fp, "utf-8")); }
-  catch { return res.status(500).json({ success:false, message:"Failed to parse JSON" }); }
-
-  const stmt = db.prepare(`
-    INSERT OR IGNORE INTO device_events
-      (event_id, user_id, device_id, device_type, event_type,
-       process_name, process_path, suspicious,
-       cpu_percent, baseline_cpu, duration_seconds,
-       usb_id, usb_action, new_executable_started, exe_path,
-       component, new_status, timestamp, payload, risk_score)
-    VALUES
-      (@event_id,@user_id,@device_id,@device_type,@event_type,
-       @process_name,@process_path,@suspicious,
-       @cpu_percent,@baseline_cpu,@duration_seconds,
-       @usb_id,@usb_action,@new_executable_started,@exe_path,
-       @component,@new_status,@timestamp,@payload,@risk_score)
-  `);
-
-  let count = 0;
-  for (const e of raw) {
-    const norm: DeviceEvent = { ...e, user_id: e.user ?? e.user_id, usb_action: e.action ?? e.usb_action };
-    const { score: risk_score } = scoreDeviceEvent(norm);
-    try {
-      stmt.run({
-        event_id:              norm.event_id              ?? null,
-        user_id:               norm.user_id               ?? null,
-        device_id:             norm.device_id             ?? null,
-        device_type:           norm.device_type           ?? null,
-        event_type:            norm.event_type            ?? null,
-        process_name:          norm.process_name          ?? null,
-        process_path:          norm.process_path          ?? null,
-        suspicious:            norm.suspicious ? 1 : 0,
-        cpu_percent:           norm.cpu_percent           ?? null,
-        baseline_cpu:          norm.baseline_cpu          ?? null,
-        duration_seconds:      norm.duration_seconds      ?? null,
-        usb_id:                norm.usb_id                ?? null,
-        usb_action:            norm.usb_action            ?? null,
-        new_executable_started: norm.new_executable_started ? 1 : 0,
-        exe_path:              norm.exe_path              ?? null,
-        component:             norm.component             ?? null,
-        new_status:            norm.new_status            ?? null,
-        timestamp:             norm.timestamp             ?? null,
-        payload:               JSON.stringify(e),
-        risk_score,
-      });
-
-      const unified: UnifiedEvent = {
-        ...norm,
-        event_category: "device",
-        user_id: norm.user_id,
-      };
-      insertUnifiedEvent(unified, risk_score);
-      count++;
-    } catch (err) {
-      console.error("Error inserting unified event:", err);
+  const python = spawn(PYTHON, args, { cwd: __dirname });
+  let stdout = "";
+  let stderr = "";
+  python.stdout.on("data", (d: Buffer) => { stdout += d.toString(); });
+  python.stderr.on("data", (d: Buffer) => { stderr += d.toString(); });
+  python.on("close", (code) => {
+    if (code !== 0) {
+      return res.status(500).json({ success: false, message: stderr || "Model execution failed" });
     }
-  }
+    try {
+      const results = JSON.parse(stdout);
+      const outPath = path.join(__dirname, "data", "risk_scores", "network", "network_risk_scores.json");
+      fs.mkdirSync(path.dirname(outPath), { recursive: true });
+      fs.writeFileSync(outPath, JSON.stringify(results, null, 2));
 
-  res.json({ success:true, count, message:`Loaded ${count} device events` });
+      const alertCount = results.filter((r: any) => r.alert).length;
+      res.json({
+        success: true,
+        count: results.length,
+        alerts: alertCount,
+        output: `Scored ${results.length} events. ${alertCount} alerts generated.`,
+      });
+    } catch {
+      res.json({ success: true, output: stdout, count: 0, alerts: 0 });
+    }
+  });
+  python.on("error", (err: Error) => res.status(500).json({ success: false, message: err.message }));
 });
 
+// --- Risk by entity ---
+app.get("/api/risk/:entity", (req, res) => {
+  const entity = req.params.entity;
+
+  const networkEvents = db.prepare(
+    "SELECT * FROM network_events WHERE user_id = ? OR device_id = ? OR source_ip = ? ORDER BY created_at DESC LIMIT 50"
+  ).all(entity, entity, entity) as any[];
+
+  const unifiedEvents = db.prepare(
+    "SELECT * FROM unified_events WHERE user_id = ? OR device_id = ? ORDER BY created_at DESC LIMIT 50"
+  ).all(entity, entity) as any[];
+
+  const alerts = db.prepare(
+    "SELECT * FROM alerts WHERE user_id = ? OR device_id = ? ORDER BY created_at DESC LIMIT 50"
+  ).all(entity, entity) as any[];
+
+  const scores = networkEvents.map((e: any) => e.risk_score).filter((s: any) => s != null);
+  const avgScore = scores.length > 0 ? Math.round(scores.reduce((a: number, b: number) => a + b, 0) / scores.length) : 0;
+  const maxScore = scores.length > 0 ? Math.max(...scores) : 0;
+
+  res.json({
+    entity,
+    summary: {
+      total_events: networkEvents.length + unifiedEvents.length,
+      network_events: networkEvents.length,
+      unified_events: unifiedEvents.length,
+      alerts: alerts.length,
+      avg_risk_score: avgScore,
+      max_risk_score: maxScore,
+      severity: maxScore >= 85 ? "critical" : maxScore >= 60 ? "high" : maxScore >= 35 ? "medium" : maxScore >= 15 ? "low" : "none",
+    },
+    network_events: networkEvents,
+    alerts,
+  });
+});
+
+// --- GET /api/alerts (JSON) ---
+app.get("/api/alerts", (req, res) => res.json(db.prepare("SELECT * FROM alerts ORDER BY created_at DESC LIMIT 200").all()));
+
+// --- Other API endpoints ---
 app.post("/api/add", (req, res) => {
-  const python = spawn("python3", ["scripts/generate_network_events.py"]);
+  const scriptPath = path.join(__dirname, "scripts", "network_model", "generate_network_events.py");
+  const python = spawn(PYTHON, [scriptPath, "--chart"], { cwd: __dirname });
+  let stdout = "";
+  let stderr = "";
+  python.stdout.on("data", (d: Buffer) => { stdout += d.toString(); });
+  python.stderr.on("data", (d: Buffer) => { stderr += d.toString(); });
   python.on("close", (code) => {
-    if (code !== 0) return res.status(500).json({ success:false, message:"Python script failed" });
-    const fp = path.join(__dirname, "data", "synthetic_network_events.json");
+    if (code !== 0) return res.status(500).json({ success:false, message: stderr || "Python script failed" });
+    const fp = path.join(__dirname, "data", "synthetic_events", "synthetic_network_events.json");
     try {
       const all: NetworkEvent[] = JSON.parse(fs.readFileSync(fp, "utf-8"));
       const newest = all.slice(-5);
@@ -770,25 +922,32 @@ app.post("/api/add", (req, res) => {
            @protocol,@bytes_sent,@bytes_received,@device_id,@event_type,@payload,@risk_score)
       `);
       for (const e of newest) {
-        const risk_score = calculateRiskScore(e);
+        const breakdown = scoreNetworkRules(e);
+        const risk_score = breakdown.composite;
         stmt.run({ ...e, payload:JSON.stringify(e), risk_score });
-        insertUnifiedEvent({ ...(e as any), event_category:"network" }, risk_score);
+        insertUnifiedEvent({ ...(e as any), event_category:"network" }, risk_score, breakdown);
       }
-      res.json({ success:true, message:"Events generated and ingested" });
+
+      let chart: string | null = null;
+      const chartMatch = stdout.match(/CHART_BASE64:(.+)/);
+      if (chartMatch) chart = chartMatch[1].trim();
+
+      res.json({ success:true, message:"Events generated and ingested", chart });
     } catch { res.status(500).json({ success:false, message:"Failed to ingest" }); }
   });
   python.on("error", (err) => res.status(500).json({ success:false, message:(err as Error).message }));
 });
 
 app.post("/api/reset", (req, res) => {
-  const fp = path.join(__dirname, "data", "synthetic_network_events.json");
+  const fp = path.join(__dirname, "data", "synthetic_events", "synthetic_network_events.json");
+  const scoresPath = path.join(__dirname, "data", "risk_scores", "network", "network_risk_scores.json");
   try {
     fs.writeFileSync(fp, JSON.stringify([], null, 2));
+    if (fs.existsSync(scoresPath)) fs.writeFileSync(scoresPath, JSON.stringify([], null, 2));
+    db.prepare("DELETE FROM alerts WHERE event_id IN (SELECT event_id FROM network_events)").run();
     db.prepare("DELETE FROM network_events").run();
-    db.prepare("DELETE FROM device_events").run();
-    db.prepare("DELETE FROM unified_events").run();
-    db.prepare("DELETE FROM alerts").run();
-    try { db.prepare("DELETE FROM sqlite_sequence WHERE name IN ('network_events','device_events','unified_events','alerts')").run(); } catch {}
+    db.prepare("DELETE FROM unified_events WHERE event_category = 'network'").run();
+    try { db.prepare("DELETE FROM sqlite_sequence WHERE name IN ('network_events','alerts','unified_events')").run(); } catch {}
     res.json({ success:true });
   } catch { res.status(500).json({ success:false, message:"Reset failed" }); }
 });
@@ -806,14 +965,14 @@ app.post("/api/alerts/ack-all", (req, res) => {
 app.get("/api/db-events",    (req, res) => res.json(db.prepare("SELECT * FROM network_events ORDER BY created_at DESC LIMIT 100").all()));
 app.get("/api/device-events",(req, res) => res.json(db.prepare("SELECT * FROM device_events  ORDER BY created_at DESC LIMIT 200").all()));
 app.get("/api/unified",      (req, res) => res.json(db.prepare("SELECT * FROM unified_events ORDER BY created_at DESC LIMIT 200").all()));
-app.get("/api/alerts",       (req, res) => res.json(db.prepare("SELECT * FROM alerts         ORDER BY created_at DESC LIMIT 200").all()));
 
 app.post("/api/add-device", (req, res) => {
-  const python = spawn("python3", ["scripts/generate_device_events.py", "5"]);
+  const scriptPath = path.join(__dirname, "scripts", "device_model", "generate_device_events.py");
+  const python = spawn(PYTHON, [scriptPath, "5"], { cwd: __dirname });
   python.on("close", (code) => {
     if (code !== 0) return res.status(500).json({ success: false, message: "Script failed" });
     try {
-      const all = readJson(path.join(__dirname, "data", "synthetic_device_events.json"));
+      const all = readJson(path.join(__dirname, "data", "synthetic_events", "synthetic_device_events.json"));
       for (const e of all.slice(-5)) ingestDeviceEvent(e);
       res.json({ success: true });
     } catch { res.status(500).json({ success: false, message: "Failed to ingest" }); }
@@ -823,12 +982,39 @@ app.post("/api/add-device", (req, res) => {
 
 app.post("/api/reset-device", (req, res) => {
   try {
-    fs.writeFileSync(path.join(__dirname, "data", "synthetic_device_events.json"), "[]", { encoding: "utf8" });
+    fs.writeFileSync(path.join(__dirname, "data", "synthetic_events", "synthetic_device_events.json"), "[]", { encoding: "utf8" });
+    db.prepare("DELETE FROM alerts WHERE event_id IN (SELECT event_id FROM device_events)").run();
     db.prepare("DELETE FROM device_events").run();
     db.prepare("DELETE FROM unified_events WHERE event_category = 'device'").run();
-    try { db.prepare("DELETE FROM sqlite_sequence WHERE name = 'device_events'").run(); } catch {}
+    try { db.prepare("DELETE FROM sqlite_sequence WHERE name IN ('device_events','unified_events')").run(); } catch {}
     res.json({ success: true });
   } catch { res.status(500).json({ success: false, message: "Reset failed" }); }
 });
 
-app.listen(PORT, () => console.log(`PirateShield running at http://localhost:${PORT}`));
+app.post("/api/reset-identity", (req, res) => {
+  try {
+    fs.writeFileSync(path.join(__dirname, "data", "synthetic_events", "synthetic_identity_events.json"), "[]", { encoding: "utf8" });
+    db.prepare("DELETE FROM alerts WHERE event_id IN (SELECT event_id FROM identity_events)").run();
+    db.prepare("DELETE FROM identity_events").run();
+    db.prepare("DELETE FROM unified_events WHERE event_category = 'identity'").run();
+    try { db.prepare("DELETE FROM sqlite_sequence WHERE name IN ('identity_events','unified_events')").run(); } catch {}
+    res.json({ success: true });
+  } catch { res.status(500).json({ success: false, message: "Reset failed" }); }
+});
+
+app.listen(PORT, () => {
+  console.log(`PirateShield running at http://localhost:${PORT}`);
+  console.log(`  Network Model:    http://localhost:${PORT}/`);
+  console.log(`  Identity Model:   http://localhost:${PORT}/identity-model`);
+  console.log(`  Device Model:     http://localhost:${PORT}/device-model`);
+  console.log(`  Alerts:           http://localhost:${PORT}/alerts`);
+  console.log(`  Ingest:           http://localhost:${PORT}/ingest`);
+  console.log(`  APIs:`);
+  console.log(`    GET  /api/alerts`);
+  console.log(`    GET  /api/risk/:entity`);
+  console.log(`    POST /api/run-network-model`);
+  console.log(`    POST /api/add`);
+  console.log(`    POST /api/reset`);
+  console.log(`    POST /ingest`);
+  console.log(`  Python: ${PYTHON}`);
+});

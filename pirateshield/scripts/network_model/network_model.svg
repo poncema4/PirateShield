@@ -1,0 +1,252 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 1020" font-family="Segoe UI, system-ui, sans-serif">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#0d1117"/><stop offset="100%" stop-color="#161b22"/></linearGradient>
+    <linearGradient id="blue" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#1f6feb"/><stop offset="100%" stop-color="#388bfd"/></linearGradient>
+    <linearGradient id="green" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#238636"/><stop offset="100%" stop-color="#3fb950"/></linearGradient>
+    <linearGradient id="red" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#da3633"/><stop offset="100%" stop-color="#f85149"/></linearGradient>
+    <linearGradient id="purple" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#8957e5"/><stop offset="100%" stop-color="#a371f7"/></linearGradient>
+    <linearGradient id="orange" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#bd5d15"/><stop offset="100%" stop-color="#d29922"/></linearGradient>
+    <marker id="arrowhead" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#8b949e"/></marker>
+  </defs>
+
+  <rect width="960" height="1020" fill="url(#bg)" rx="12"/>
+
+  <!-- ================================================================== -->
+  <!-- Title                                                              -->
+  <!-- ================================================================== -->
+  <text x="480" y="36" text-anchor="middle" fill="#f0f6fc" font-size="20" font-weight="700">PirateShield - Network Anomaly Detection Model</text>
+  <text x="480" y="56" text-anchor="middle" fill="#8b949e" font-size="11">network_model.py | Rule-Based Risk Scoring Engine (M01-M08) | 0-100 Scale</text>
+
+  <!-- ================================================================== -->
+  <!-- STAGE 1: Input                                                     -->
+  <!-- ================================================================== -->
+  <rect x="30" y="75" width="900" height="55" rx="10" fill="#161b22" stroke="#21262d"/>
+  <text x="48" y="95" fill="#58a6ff" font-size="11" font-weight="700">STAGE 1</text>
+  <text x="112" y="95" fill="#f0f6fc" font-size="11" font-weight="600">Load Raw Events</text>
+  <rect x="48" y="103" width="250" height="20" rx="4" fill="url(#blue)" opacity="0.85"/>
+  <text x="173" y="117" text-anchor="middle" fill="white" font-size="9">synthetic_network_events.json</text>
+  <text x="320" y="117" fill="#8b949e" font-size="9">Fields: event_id, user_id, timestamp, source_ip, destination_ip, destination_port,</text>
+  <text x="320" y="117" fill="#8b949e" font-size="9" dy="12">protocol, bytes_sent, bytes_received, device_id, user_known_devices, event_type</text>
+
+  <!-- Arrow -->
+  <line x1="480" y1="130" x2="480" y2="150" stroke="#8b949e" stroke-width="2" marker-end="url(#arrowhead)"/>
+
+  <!-- ================================================================== -->
+  <!-- STAGE 2: Feature Engineering                                       -->
+  <!-- ================================================================== -->
+  <rect x="30" y="153" width="900" height="88" rx="10" fill="#161b22" stroke="#21262d"/>
+  <text x="48" y="173" fill="#58a6ff" font-size="11" font-weight="700">STAGE 2</text>
+  <text x="112" y="173" fill="#f0f6fc" font-size="11" font-weight="600">Feature Engineering</text>
+  <text x="280" y="173" fill="#8b949e" font-size="10">events_to_dataframe()</text>
+
+  <!-- 9 feature columns -->
+  <rect x="48"  y="184" width="100" height="22" rx="4" fill="#21262d" stroke="#30363d"/>
+  <text x="98"  y="199" text-anchor="middle" fill="#c9d1d9" font-size="8">bytes_sent</text>
+
+  <rect x="158" y="184" width="100" height="22" rx="4" fill="#21262d" stroke="#30363d"/>
+  <text x="208" y="199" text-anchor="middle" fill="#c9d1d9" font-size="8">bytes_received</text>
+
+  <rect x="268" y="184" width="100" height="22" rx="4" fill="#21262d" stroke="#30363d"/>
+  <text x="318" y="199" text-anchor="middle" fill="#c9d1d9" font-size="8">byte_volume</text>
+
+  <rect x="378" y="184" width="100" height="22" rx="4" fill="#21262d" stroke="#30363d"/>
+  <text x="428" y="199" text-anchor="middle" fill="#c9d1d9" font-size="8">protocol_code</text>
+
+  <rect x="488" y="184" width="90"  height="22" rx="4" fill="#21262d" stroke="#30363d"/>
+  <text x="533" y="199" text-anchor="middle" fill="#c9d1d9" font-size="8">port_risk</text>
+
+  <rect x="588" y="184" width="110" height="22" rx="4" fill="#21262d" stroke="#30363d"/>
+  <text x="643" y="199" text-anchor="middle" fill="#c9d1d9" font-size="8">event_type_risk</text>
+
+  <rect x="708" y="184" width="100" height="22" rx="4" fill="#21262d" stroke="#30363d"/>
+  <text x="758" y="199" text-anchor="middle" fill="#c9d1d9" font-size="8">dest_ip_risk</text>
+
+  <rect x="818" y="184" width="100" height="22" rx="4" fill="#21262d" stroke="#30363d"/>
+  <text x="868" y="199" text-anchor="middle" fill="#c9d1d9" font-size="8">unknown_device</text>
+
+  <rect x="48"  y="212" width="60"  height="22" rx="4" fill="#21262d" stroke="#30363d"/>
+  <text x="78"  y="227" text-anchor="middle" fill="#c9d1d9" font-size="8">hour</text>
+
+  <text x="130" y="227" fill="#8b949e" font-size="8">port_risk: 1.0 if port in HIGH_RISK_PORTS else 0.0 | event_type_risk: 1.0 high / 0.5 medium / 0.0 normal</text>
+  <text x="130" y="237" fill="#8b949e" font-size="8">dest_ip_risk: 1.0 if dest in SUSPICIOUS_DEST | unknown_device: 1.0 if device not in user_known_devices list</text>
+
+  <!-- Arrow -->
+  <line x1="480" y1="241" x2="480" y2="258" stroke="#8b949e" stroke-width="2" marker-end="url(#arrowhead)"/>
+
+  <!-- ================================================================== -->
+  <!-- STAGE 3: Baseline Precomputation                                   -->
+  <!-- ================================================================== -->
+  <rect x="30" y="261" width="900" height="100" rx="10" fill="#161b22" stroke="#21262d"/>
+  <text x="48" y="281" fill="#58a6ff" font-size="11" font-weight="700">STAGE 3</text>
+  <text x="112" y="281" fill="#f0f6fc" font-size="11" font-weight="600">Baseline Precomputation (per-device, 14-day rolling window)</text>
+
+  <!-- RollingBaseline -->
+  <rect x="48" y="292" width="420" height="60" rx="6" fill="#0d1117" stroke="#388bfd" stroke-width="1.5"/>
+  <text x="258" y="310" text-anchor="middle" fill="#58a6ff" font-size="10" font-weight="700">RollingBaseline</text>
+  <text x="258" y="324" text-anchor="middle" fill="#8b949e" font-size="8">get_bytes_baseline(device) -> (mean, std) of bytes_sent over 14-day window</text>
+  <text x="258" y="336" text-anchor="middle" fill="#8b949e" font-size="8">get_port_baseline(device) -> (high_risk_rate, total) | get_conn_baseline(device) -> (unique_dests, total)</text>
+  <text x="258" y="348" text-anchor="middle" fill="#6e7681" font-size="7">Groups by device_id, slides 14-day window per event, stores (mean, std) for z-score in M01</text>
+
+  <!-- BeaconingDetector -->
+  <rect x="488" y="292" width="420" height="60" rx="6" fill="#0d1117" stroke="#f85149" stroke-width="1.5"/>
+  <text x="698" y="310" text-anchor="middle" fill="#f85149" font-size="10" font-weight="700">BeaconingDetector</text>
+  <text x="698" y="324" text-anchor="middle" fill="#8b949e" font-size="8">Groups events by (source_ip, destination_ip) pair</text>
+  <text x="698" y="336" text-anchor="middle" fill="#8b949e" font-size="8">Computes inter-arrival time deltas, calculates CV = std / mean</text>
+  <text x="698" y="348" text-anchor="middle" fill="#6e7681" font-size="7">CV &lt; 0.1 = 1.0 | CV &lt; 0.3 = 0.85 | CV &lt; 0.5 = 0.6 | CV &lt; 0.8 = 0.3 | else 0.0</text>
+
+  <!-- Arrow -->
+  <line x1="480" y1="361" x2="480" y2="378" stroke="#8b949e" stroke-width="2" marker-end="url(#arrowhead)"/>
+
+  <!-- ================================================================== -->
+  <!-- STAGE 4: Rules M01-M08                                             -->
+  <!-- ================================================================== -->
+  <rect x="30" y="381" width="900" height="310" rx="10" fill="#161b22" stroke="#21262d"/>
+  <text x="48" y="401" fill="#58a6ff" font-size="11" font-weight="700">STAGE 4</text>
+  <text x="112" y="401" fill="#f0f6fc" font-size="11" font-weight="600">Risk Rules M01-M08 (applied per event)</text>
+  <text x="480" y="401" fill="#8b949e" font-size="9">compute_risk_scores() iterates every row and calls all 8 rules</text>
+
+  <!-- M01 -->
+  <rect x="48" y="412" width="425" height="62" rx="6" fill="#0d1117" stroke="#1f6feb" stroke-width="1.5"/>
+  <text x="60" y="429" fill="#58a6ff" font-size="10" font-weight="700">M01: Excessive Outbound Traffic</text>
+  <text x="420" y="429" fill="#388bfd" font-size="9" text-anchor="end">+40 max</text>
+  <text x="60" y="443" fill="#8b949e" font-size="8">bytes_sent > 5MB = 40 | > 1MB = 25</text>
+  <text x="60" y="455" fill="#8b949e" font-size="8">z-score vs 14-day baseline: > 3.0 = 40 | > 2.0 = 25 | > 1.5 = 15</text>
+  <text x="60" y="467" fill="#6e7681" font-size="7">Uses RollingBaseline.get_bytes_baseline(device_id) for per-device mean/std</text>
+
+  <!-- M02 -->
+  <rect x="488" y="412" width="425" height="62" rx="6" fill="#0d1117" stroke="#1f6feb" stroke-width="1.5"/>
+  <text x="500" y="429" fill="#58a6ff" font-size="10" font-weight="700">M02: VPN / Proxy Destination</text>
+  <text x="860" y="429" fill="#388bfd" font-size="9" text-anchor="end">+25 max</text>
+  <text x="500" y="443" fill="#8b949e" font-size="8">dest_ip in SUSPICIOUS_DEST = +15</text>
+  <text x="500" y="455" fill="#8b949e" font-size="8">dest_port in VPN_PROXY_PORTS = +15 | event_type vpn_connection = +10</text>
+  <text x="500" y="467" fill="#6e7681" font-size="7">Additive but capped at 25. Ports: 1080, 1194, 8080, 9050, 9150, 4145, 1081</text>
+
+  <!-- M03 -->
+  <rect x="48" y="482" width="425" height="62" rx="6" fill="#0d1117" stroke="#1f6feb" stroke-width="1.5"/>
+  <text x="60" y="499" fill="#58a6ff" font-size="10" font-weight="700">M03: Abnormal Connection Burst</text>
+  <text x="420" y="499" fill="#388bfd" font-size="9" text-anchor="end">+35 max</text>
+  <text x="60" y="513" fill="#8b949e" font-size="8">Unique destination IPs per source: > 100 = 35 | > 50 = 25 | > 20 = 15</text>
+  <text x="60" y="525" fill="#8b949e" font-size="8">Baseline fallback: if count > 3x historical unique destinations = 20</text>
+  <text x="60" y="537" fill="#6e7681" font-size="7">Uses RollingBaseline.get_conn_baseline(device_id) for historical unique dest count</text>
+
+  <!-- M04 -->
+  <rect x="488" y="482" width="425" height="62" rx="6" fill="#0d1117" stroke="#1f6feb" stroke-width="1.5"/>
+  <text x="500" y="499" fill="#58a6ff" font-size="10" font-weight="700">M04: High-Risk Port Access</text>
+  <text x="860" y="499" fill="#388bfd" font-size="9" text-anchor="end">+30 max</text>
+  <text x="500" y="513" fill="#8b949e" font-size="8">Ports 4444, 1337, 6667 (C2/exploit) = 30</text>
+  <text x="500" y="525" fill="#8b949e" font-size="8">Ports 22, 23, 3389, 5900 = 25 (or 10 if historically frequent > 30%)</text>
+  <text x="500" y="537" fill="#6e7681" font-size="7">HIGH_RISK_PORTS: {22, 23, 3389, 4444, 5900, 6667, 1337}</text>
+
+  <!-- M05 -->
+  <rect x="48" y="552" width="425" height="52" rx="6" fill="#0d1117" stroke="#d29922" stroke-width="1.5"/>
+  <text x="60" y="569" fill="#e3b341" font-size="10" font-weight="700">M05: Suspicious Protocol</text>
+  <text x="420" y="569" fill="#d29922" font-size="9" text-anchor="end">+20 max</text>
+  <text x="60" y="583" fill="#8b949e" font-size="8">RAW = 20 | ICMP = 10 | TCP/UDP = 0</text>
+  <text x="60" y="597" fill="#6e7681" font-size="7">Static lookup, no baseline needed</text>
+
+  <!-- M06 -->
+  <rect x="488" y="552" width="425" height="52" rx="6" fill="#0d1117" stroke="#d29922" stroke-width="1.5"/>
+  <text x="500" y="569" fill="#e3b341" font-size="10" font-weight="700">M06: Unknown Device</text>
+  <text x="860" y="569" fill="#d29922" font-size="9" text-anchor="end">+15 max</text>
+  <text x="500" y="583" fill="#8b949e" font-size="8">device_id NOT in user_known_devices list = 15 | known = 0</text>
+  <text x="500" y="597" fill="#6e7681" font-size="7">Compares device_id against per-user known device list from event payload</text>
+
+  <!-- M07 -->
+  <rect x="48" y="612" width="425" height="62" rx="6" fill="#0d1117" stroke="#da3633" stroke-width="1.5"/>
+  <text x="60" y="629" fill="#f85149" font-size="10" font-weight="700">M07: C2 Beaconing Detection</text>
+  <text x="420" y="629" fill="#da3633" font-size="9" text-anchor="end">+40 max</text>
+  <text x="60" y="643" fill="#8b949e" font-size="8">raw = beacon_score * 40 (from BeaconingDetector CV analysis)</text>
+  <text x="60" y="655" fill="#8b949e" font-size="8">+10 bonus if dest in SUSPICIOUS_DEST | +10 bonus if event_type = c2_beacon</text>
+  <text x="60" y="667" fill="#6e7681" font-size="7">Detects periodic callbacks: low coefficient of variation = highly regular = likely C2</text>
+
+  <!-- M08 -->
+  <rect x="488" y="612" width="425" height="62" rx="6" fill="#0d1117" stroke="#da3633" stroke-width="1.5"/>
+  <text x="500" y="629" fill="#f85149" font-size="10" font-weight="700">M08: Threat Event Classification</text>
+  <text x="860" y="629" fill="#da3633" font-size="9" text-anchor="end">+40 max</text>
+  <text x="500" y="643" fill="#8b949e" font-size="8">c2_beacon, malware = 40 | data_exfil, brute_force, lateral_movement = 35</text>
+  <text x="500" y="655" fill="#8b949e" font-size="8">port_scan = 20 | unusual_login, vpn_connection = 15 | normal = 0</text>
+  <text x="500" y="667" fill="#6e7681" font-size="7">Direct event_type string matching, no baseline needed</text>
+
+  <!-- Arrow -->
+  <line x1="480" y1="691" x2="480" y2="710" stroke="#8b949e" stroke-width="2" marker-end="url(#arrowhead)"/>
+
+  <!-- ================================================================== -->
+  <!-- STAGE 5: Composite Scoring                                         -->
+  <!-- ================================================================== -->
+  <rect x="30" y="713" width="900" height="62" rx="10" fill="#161b22" stroke="#21262d"/>
+  <text x="48" y="733" fill="#58a6ff" font-size="11" font-weight="700">STAGE 5</text>
+  <text x="112" y="733" fill="#f0f6fc" font-size="11" font-weight="600">Composite Scoring + Severity Classification</text>
+
+  <rect x="48" y="740" width="860" height="28" rx="5" fill="#0d1117" stroke="#30363d"/>
+  <text x="480" y="756" text-anchor="middle" fill="#79c0ff" font-size="11" font-family="Courier New, monospace">composite = min(100, M01 + M02 + M03 + M04 + M05 + M06 + M07 + M08)</text>
+
+  <!-- Severity badges -->
+  <rect x="48"  y="740" width="1" height="28" fill="transparent"/>
+  <!-- Inline severity strip below formula -->
+
+  <!-- Arrow -->
+  <line x1="480" y1="775" x2="480" y2="792" stroke="#8b949e" stroke-width="2" marker-end="url(#arrowhead)"/>
+
+  <!-- ================================================================== -->
+  <!-- STAGE 6: Severity + Alert Logic                                    -->
+  <!-- ================================================================== -->
+  <rect x="30" y="795" width="900" height="65" rx="10" fill="#161b22" stroke="#21262d"/>
+  <text x="48" y="815" fill="#58a6ff" font-size="11" font-weight="700">STAGE 6</text>
+  <text x="112" y="815" fill="#f0f6fc" font-size="11" font-weight="600">Severity + Alert Decision</text>
+
+  <!-- Severity scale -->
+  <rect x="48"  y="824" width="90"  height="22" rx="4" fill="#30363d"/>
+  <text x="93"  y="839" text-anchor="middle" fill="#8b949e" font-size="9" font-weight="600">NONE [0-14]</text>
+
+  <rect x="148" y="824" width="100" height="22" rx="4" fill="#3fb950"/>
+  <text x="198" y="839" text-anchor="middle" fill="#0d1117" font-size="9" font-weight="600">LOW [15-34]</text>
+
+  <rect x="258" y="824" width="120" height="22" rx="4" fill="#d29922"/>
+  <text x="318" y="839" text-anchor="middle" fill="#0d1117" font-size="9" font-weight="600">MEDIUM [35-59]</text>
+
+  <rect x="388" y="824" width="110" height="22" rx="4" fill="#f85149"/>
+  <text x="443" y="839" text-anchor="middle" fill="white" font-size="9" font-weight="600">HIGH [60-84]</text>
+
+  <rect x="508" y="824" width="130" height="22" rx="4" fill="#da3633"/>
+  <text x="573" y="839" text-anchor="middle" fill="white" font-size="9" font-weight="600">CRITICAL [85-100]</text>
+
+  <text x="660" y="838" fill="#f85149" font-size="9" font-weight="600">Alert triggers:</text>
+  <text x="762" y="838" fill="#8b949e" font-size="8">composite >= 60 OR any rule >= 80% of its max</text>
+  <text x="660" y="852" fill="#6e7681" font-size="7">should_alert() checks both conditions independently</text>
+
+  <!-- Arrow -->
+  <line x1="240" y1="860" x2="240" y2="878" stroke="#8b949e" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+  <line x1="480" y1="860" x2="480" y2="878" stroke="#8b949e" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+  <line x1="720" y1="860" x2="720" y2="878" stroke="#8b949e" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+
+  <!-- ================================================================== -->
+  <!-- STAGE 7: Outputs                                                   -->
+  <!-- ================================================================== -->
+  <rect x="30" y="881" width="900" height="110" rx="10" fill="#161b22" stroke="#21262d"/>
+  <text x="48" y="901" fill="#58a6ff" font-size="11" font-weight="700">STAGE 7</text>
+  <text x="112" y="901" fill="#f0f6fc" font-size="11" font-weight="600">Output Layer</text>
+
+  <!-- JSON output -->
+  <rect x="48" y="912" width="270" height="68" rx="8" fill="url(#blue)" opacity="0.9"/>
+  <text x="183" y="932" text-anchor="middle" fill="white" font-size="11" font-weight="600">JSON Risk Scores</text>
+  <text x="183" y="947" text-anchor="middle" fill="#c9d1d9" font-size="8">network_risk_scores.json</text>
+  <text x="183" y="960" text-anchor="middle" fill="#c9d1d9" font-size="7">build_output_records(): all 8 rule scores +</text>
+  <text x="183" y="972" text-anchor="middle" fill="#c9d1d9" font-size="7">composite, label, action, alert boolean per event</text>
+
+  <!-- DB output -->
+  <rect x="340" y="912" width="270" height="68" rx="8" fill="url(#green)" opacity="0.9"/>
+  <text x="475" y="932" text-anchor="middle" fill="white" font-size="11" font-weight="600">SQLite Database</text>
+  <text x="475" y="947" text-anchor="middle" fill="#c9d1d9" font-size="8">pirateshield.db (--db flag)</text>
+  <text x="475" y="960" text-anchor="middle" fill="#c9d1d9" font-size="7">write_network_scores_to_db(): INSERT OR REPLACE</text>
+  <text x="475" y="972" text-anchor="middle" fill="#c9d1d9" font-size="7">into network_events with M01-M08 payload JSON</text>
+
+  <!-- Alert output -->
+  <rect x="632" y="912" width="280" height="68" rx="8" fill="url(#red)" opacity="0.9"/>
+  <text x="772" y="932" text-anchor="middle" fill="white" font-size="11" font-weight="600">Alert Generation</text>
+  <text x="772" y="947" text-anchor="middle" fill="#c9d1d9" font-size="8">write_alerts_to_db() + generate_alert()</text>
+  <text x="772" y="960" text-anchor="middle" fill="#c9d1d9" font-size="7">INSERT into alerts table: event_id, severity,</text>
+  <text x="772" y="972" text-anchor="middle" fill="#c9d1d9" font-size="7">reason (rules fired), risk_score, acknowledged=0</text>
+
+  <!-- Footer -->
+  <text x="480" y="1010" text-anchor="middle" fill="#484f58" font-size="9">PirateShield Network Model | Python 3 | NumPy + Pandas + SQLite3 | CLI: --input --output --json --db</text>
+</svg>

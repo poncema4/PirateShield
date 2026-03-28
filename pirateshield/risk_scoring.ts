@@ -1,6 +1,8 @@
 import type { NetworkEvent } from "./server.ts";
 
 const HIGH_RISK_PORTS        = [22, 23, 3389, 4444, 5900, 6667, 1337];
+const VPN_PROXY_PORTS        = [1080, 1194, 8080, 9050, 9150, 4145, 1081];
+const SUSPICIOUS_DEST_IPS    = ["185.220.101.1", "198.51.100.77", "203.0.113.45"];
 const SUSPICIOUS_PROTOCOLS   = ["ICMP", "RAW"];
 const HIGH_RISK_NET_TYPES    = ["port_scan","brute_force","data_exfil","malware","lateral_movement","c2_beacon"];
 const MEDIUM_RISK_NET_TYPES  = ["unusual_login","vpn_connection"];
@@ -75,37 +77,106 @@ export interface RiskResult {
   reasons: string[];
 }
 
+export interface NetworkRiskBreakdown {
+  m01: number;
+  m02: number;
+  m03: number;
+  m04: number;
+  m05: number;
+  m06: number;
+  m07: number;
+  m08: number;
+  composite: number;
+  reasons: string[];
+}
+
 export type AlertSeverity = "low" | "medium" | "high" | "critical";
 
-function scoreNetworkEvent(event: Partial<NetworkEvent & UnifiedEvent>): RiskResult {
-  let score = 0;
+export function scoreNetworkRules(event: Partial<NetworkEvent & UnifiedEvent>): NetworkRiskBreakdown {
   const reasons: string[] = [];
+  let m01 = 0, m02 = 0, m03 = 0, m04 = 0, m05 = 0, m06 = 0, m07 = 0, m08 = 0;
 
-  if (event.destination_port && HIGH_RISK_PORTS.includes(event.destination_port)) {
-    score += 30;
-    reasons.push(`High-risk destination port: ${event.destination_port}`);
-  }
-  if (event.protocol && SUSPICIOUS_PROTOCOLS.includes(event.protocol.toUpperCase())) {
-    score += 20;
-    reasons.push(`Suspicious protocol: ${event.protocol}`);
-  }
-  if (event.event_type && HIGH_RISK_NET_TYPES.includes(event.event_type.toLowerCase())) {
-    score += 40;
-    reasons.push(`High-risk event type: ${event.event_type}`);
-  } else if (event.event_type && MEDIUM_RISK_NET_TYPES.includes(event.event_type.toLowerCase())) {
-    score += 20;
-    reasons.push(`Medium-risk event type: ${event.event_type}`);
-  }
+  // M01: Excessive Outbound Traffic
   if (event.bytes_sent && event.bytes_sent > 5_000_000) {
-    score += 20;
-    reasons.push(`Large data transfer: ${(event.bytes_sent / 1_000_000).toFixed(1)} MB sent`);
-  }
-  if (event.device_id && event.user_known_devices && !event.user_known_devices.includes(event.device_id)) {
-    score += 15;
-    reasons.push(`Unknown device: ${event.device_id}`);
+    m01 = 40;
+    reasons.push(`M01: Excessive outbound ${(event.bytes_sent / 1_000_000).toFixed(1)} MB`);
+  } else if (event.bytes_sent && event.bytes_sent > 1_000_000) {
+    m01 = 25;
+    reasons.push(`M01: Large outbound ${(event.bytes_sent / 1_000_000).toFixed(1)} MB`);
   }
 
-  return { score, reasons };
+  // M02: VPN / Proxy Destination
+  if (event.destination_ip && SUSPICIOUS_DEST_IPS.includes(event.destination_ip)) {
+    m02 += 15;
+    reasons.push(`M02: Suspicious destination IP ${event.destination_ip}`);
+  }
+  if (event.destination_port && VPN_PROXY_PORTS.includes(event.destination_port)) {
+    m02 = Math.min(25, m02 + 15);
+    reasons.push(`M02: VPN/proxy port ${event.destination_port}`);
+  }
+  if (event.event_type?.toLowerCase() === "vpn_connection") {
+    m02 = Math.min(25, m02 + 10);
+    reasons.push("M02: VPN connection detected");
+  }
+
+  // M03: Abnormal Connection Burst (limited in per-event mode, full detection in batch Python model)
+  // Per-event: only flag if event type suggests scanning
+  if (event.event_type?.toLowerCase() === "port_scan") {
+    m03 = 20;
+    reasons.push("M03: Port scan activity detected");
+  }
+
+  // M04: High-Risk Port Access
+  if (event.destination_port && HIGH_RISK_PORTS.includes(event.destination_port)) {
+    if ([4444, 1337, 6667].includes(event.destination_port)) {
+      m04 = 30;
+    } else {
+      m04 = 25;
+    }
+    reasons.push(`M04: High-risk port ${event.destination_port}`);
+  }
+
+  // M05: Suspicious Protocol
+  if (event.protocol && SUSPICIOUS_PROTOCOLS.includes(event.protocol.toUpperCase())) {
+    m05 = event.protocol.toUpperCase() === "RAW" ? 20 : 10;
+    reasons.push(`M05: Suspicious protocol ${event.protocol}`);
+  }
+
+  // M06: Unknown Device
+  if (event.device_id && event.user_known_devices && !event.user_known_devices.includes(event.device_id)) {
+    m06 = 15;
+    reasons.push(`M06: Unknown device ${event.device_id}`);
+  }
+
+  // M07: C2 Beaconing (per-event: flag c2_beacon type, full variance analysis in Python batch)
+  if (event.event_type?.toLowerCase() === "c2_beacon") {
+    m07 = 30;
+    reasons.push("M07: C2 beacon event type (full analysis requires batch model)");
+  }
+
+  // M08: Threat Event Classification
+  const et = event.event_type?.toLowerCase() ?? "";
+  if (["c2_beacon", "malware"].includes(et)) {
+    m08 = 40;
+    reasons.push(`M08: Critical threat type ${event.event_type}`);
+  } else if (["data_exfil", "brute_force", "lateral_movement"].includes(et)) {
+    m08 = 35;
+    reasons.push(`M08: High threat type ${event.event_type}`);
+  } else if (et === "port_scan") {
+    m08 = 20;
+    reasons.push(`M08: Scan activity ${event.event_type}`);
+  } else if (MEDIUM_RISK_NET_TYPES.includes(et)) {
+    m08 = 15;
+    reasons.push(`M08: Medium-risk type ${event.event_type}`);
+  }
+
+  const composite = Math.min(100, m01 + m02 + m03 + m04 + m05 + m06 + m07 + m08);
+  return { m01, m02, m03, m04, m05, m06, m07, m08, composite, reasons };
+}
+
+function scoreNetworkEvent(event: Partial<NetworkEvent & UnifiedEvent>): RiskResult {
+  const breakdown = scoreNetworkRules(event);
+  return { score: breakdown.composite, reasons: breakdown.reasons };
 }
 
 export function scoreDeviceEvent(event: Partial<DeviceEvent | UnifiedEvent>): RiskResult {
@@ -199,4 +270,17 @@ export function getAlertSeverity(score: number): AlertSeverity | null {
   if (score >= 35) return "medium";
   if (score >= 15) return "low";
   return null;
+}
+
+export function shouldGenerateNetworkAlert(score: number, breakdown?: NetworkRiskBreakdown): boolean {
+  if (score >= 60) return true;
+  if (!breakdown) return score >= 60;
+  const ruleMaxes: Record<string, number> = {
+    m01: 40, m02: 25, m03: 35, m04: 30, m05: 20, m06: 15, m07: 40, m08: 40,
+  };
+  for (const [key, max] of Object.entries(ruleMaxes)) {
+    const val = breakdown[key as keyof NetworkRiskBreakdown] as number;
+    if (typeof val === "number" && val >= max * 0.8) return true;
+  }
+  return false;
 }

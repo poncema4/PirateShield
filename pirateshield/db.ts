@@ -106,4 +106,19 @@ db.exec(`
   )
 `);
 
+db.exec(`
+  CREATE TABLE IF NOT EXISTS access_permissions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id TEXT NOT NULL,
+    resource TEXT NOT NULL,
+    permission_level TEXT NOT NULL CHECK(permission_level IN ('read','write','admin','denied')),
+    granted_by TEXT,
+    granted_at TEXT DEFAULT (datetime('now')),
+    expires_at TEXT,
+    is_active INTEGER DEFAULT 1,
+    risk_score REAL DEFAULT 0,
+    created_at TEXT DEFAULT (datetime('now'))
+  )
+`);
+
 export default db;
