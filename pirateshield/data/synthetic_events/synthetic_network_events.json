@@ -208,5 +208,25 @@
       "host-C"
     ],
     "event_type": "file_transfer"
+  },
+  {
+    "user_id": "it_staff3",
+    "event_id": "22dc2c44-6f99-47ec-a1bb-650f75853205",
+    "timestamp": "2026-03-31T12:08:52.995422-05:00",
+    "source_ip": "172.16.0.3",
+    "destination_ip": "91.108.4.1",
+    "destination_port": 53,
+    "lat": -81.093514,
+    "long": -39.628929,
+    "protocol": "UDP",
+    "bytes_sent": 2065,
+    "bytes_received": 27719,
+    "device_id": "host-D",
+    "user_known_devices": [
+      "host-C",
+      "host-D"
+    ],
+    "event_type": "dns_lookup",
+    "_manual_score": 71
   }
 ]

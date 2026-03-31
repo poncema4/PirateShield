@@ -273,5 +273,22 @@
     "risk_label": "MEDIUM",
     "risk_action": "Monitor traffic",
     "alert": true
+  },
+  {
+    "event_id": "22dc2c44-6f99-47ec-a1bb-650f75853205",
+    "event_type": "dns_lookup",
+    "source_ip": "172.16.0.3",
+    "destination_ip": "91.108.4.1",
+    "m01_score": 0,
+    "m02_score": 0,
+    "m03_score": 0,
+    "m04_score": 0,
+    "m05_score": 0,
+    "m06_score": 0,
+    "m07_score": 0,
+    "m08_score": 71,
+    "risk_score": 71,
+    "risk_label": "HIGH",
+    "alert": true
   }
 ]
