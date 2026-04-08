@@ -34,7 +34,7 @@ def generate_event(base_time_est, index):
     event_time_est = base_time_est + timedelta(seconds=index * 5)
 
     device_type = random.choice(DEVICE_TYPE)
-    device_id = f"device-{uuid.uuid4().hex[:8]}"
+    device_id = f"device-{random.randint(1, 10):02d}"
     user = random.choice(USERS)
 
     # Endpoint events (processes, cpu/memory spikes, usb, security changes).
