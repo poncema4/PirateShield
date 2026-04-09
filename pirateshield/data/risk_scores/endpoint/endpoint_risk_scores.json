@@ -1,0 +1,233 @@
+[
+  {
+    "event_id": "1f67cf20-871b-48d2-9efb-b4f35c53278e",
+    "device_id": "device-01",
+    "user_id": "student003",
+    "event_type": "process_start",
+    "timestamp": "2026-04-08T17:40:58.473052-05:00",
+    "process_name": "ngrok",
+    "scenario": "chain_attack_A",
+    "scenario_step": 1,
+    "layer1_rule_score": 40,
+    "layer2_anomaly_score": 0,
+    "layer3_chain_intensity": 40.0,
+    "layer3_chain_norm": 1.0,
+    "layer3_chain_points": 15.0,
+    "chain_contributing_events": 1,
+    "composite_score": 55.0,
+    "severity": "MEDIUM",
+    "rule_reasons": [
+      "Suspicious process flag: ngrok"
+    ]
+  },
+  {
+    "event_id": "75e36896-d910-4ce0-b6c8-82af19b563da",
+    "device_id": "device-01",
+    "user_id": "student003",
+    "event_type": "cpu_spike",
+    "timestamp": "2026-04-08T17:43:58.473052-05:00",
+    "process_name": null,
+    "scenario": "chain_attack_A",
+    "scenario_step": 2,
+    "layer1_rule_score": 30,
+    "layer2_anomaly_score": 0,
+    "layer3_chain_intensity": 46.2628,
+    "layer3_chain_norm": 1.0,
+    "layer3_chain_points": 15.0,
+    "chain_contributing_events": 2,
+    "composite_score": 45.0,
+    "severity": "MEDIUM",
+    "rule_reasons": [
+      "Sustained CPU spike: 94.0% (11.8x baseline) for 650s"
+    ]
+  },
+  {
+    "event_id": "19f4843f-ce65-4575-81fc-6be3341c35f8",
+    "device_id": "device-01",
+    "user_id": "student003",
+    "event_type": "security_change",
+    "timestamp": "2026-04-08T17:48:58.473052-05:00",
+    "process_name": null,
+    "scenario": "chain_attack_A",
+    "scenario_step": 3,
+    "layer1_rule_score": 50,
+    "layer2_anomaly_score": 0,
+    "layer3_chain_intensity": 60.3226,
+    "layer3_chain_norm": 1.0,
+    "layer3_chain_points": 15.0,
+    "chain_contributing_events": 3,
+    "composite_score": 65.0,
+    "severity": "HIGH",
+    "rule_reasons": [
+      "Security component disabled: firewall"
+    ]
+  },
+  {
+    "event_id": "3be62fa7-cf3d-4e8e-bbcd-dffca8441bff",
+    "device_id": "device-02",
+    "user_id": "student007",
+    "event_type": "usb_event",
+    "timestamp": "2026-04-08T17:55:58.473052-05:00",
+    "process_name": null,
+    "scenario": "chain_attack_B",
+    "scenario_step": 1,
+    "layer1_rule_score": 45,
+    "layer2_anomaly_score": 0,
+    "layer3_chain_intensity": 45.0,
+    "layer3_chain_norm": 1.0,
+    "layer3_chain_points": 15.0,
+    "chain_contributing_events": 1,
+    "composite_score": 60.0,
+    "severity": "HIGH",
+    "rule_reasons": [
+      "USB triggered executable: E:/patcher.exe"
+    ]
+  },
+  {
+    "event_id": "66208434-de1a-43cf-9f1a-26ef450a95d1",
+    "device_id": "device-02",
+    "user_id": "student007",
+    "event_type": "process_start",
+    "timestamp": "2026-04-08T17:57:58.473052-05:00",
+    "process_name": "mimikatz",
+    "scenario": "chain_attack_B",
+    "scenario_step": 2,
+    "layer1_rule_score": 40,
+    "layer2_anomaly_score": 0,
+    "layer3_chain_intensity": 64.6965,
+    "layer3_chain_norm": 1.0,
+    "layer3_chain_points": 15.0,
+    "chain_contributing_events": 2,
+    "composite_score": 55.0,
+    "severity": "MEDIUM",
+    "rule_reasons": [
+      "Suspicious process flag: mimikatz"
+    ]
+  },
+  {
+    "event_id": "ee434eb8-d7a3-4fd4-9411-9714f26e86e3",
+    "device_id": "device-03",
+    "user_id": "student011",
+    "event_type": "security_change",
+    "timestamp": "2026-04-08T18:10:58.473052-05:00",
+    "process_name": null,
+    "scenario": "chain_attack_C",
+    "scenario_step": 1,
+    "layer1_rule_score": 50,
+    "layer2_anomaly_score": 0,
+    "layer3_chain_intensity": 50.0,
+    "layer3_chain_norm": 1.0,
+    "layer3_chain_points": 15.0,
+    "chain_contributing_events": 1,
+    "composite_score": 65.0,
+    "severity": "HIGH",
+    "rule_reasons": [
+      "Security component disabled: antivirus"
+    ]
+  },
+  {
+    "event_id": "01cfed62-67f6-4b0c-adb4-2cf0c9265a28",
+    "device_id": "device-03",
+    "user_id": "student011",
+    "event_type": "process_start",
+    "timestamp": "2026-04-08T18:15:58.473052-05:00",
+    "process_name": "metasploit",
+    "scenario": "chain_attack_C",
+    "scenario_step": 2,
+    "layer1_rule_score": 40,
+    "layer2_anomaly_score": 0,
+    "layer3_chain_intensity": 51.1565,
+    "layer3_chain_norm": 1.0,
+    "layer3_chain_points": 15.0,
+    "chain_contributing_events": 2,
+    "composite_score": 55.0,
+    "severity": "MEDIUM",
+    "rule_reasons": [
+      "Suspicious process flag: metasploit"
+    ]
+  },
+  {
+    "event_id": "51e6ad5b-d0f4-4c02-80f6-030cb5039f18",
+    "device_id": "device-04",
+    "user_id": "student015",
+    "event_type": "process_start",
+    "timestamp": "2026-04-08T18:25:58.473052-05:00",
+    "process_name": "tor",
+    "scenario": "chain_attack_D",
+    "scenario_step": 1,
+    "layer1_rule_score": 40,
+    "layer2_anomaly_score": 0,
+    "layer3_chain_intensity": 40.0,
+    "layer3_chain_norm": 1.0,
+    "layer3_chain_points": 15.0,
+    "chain_contributing_events": 1,
+    "composite_score": 55.0,
+    "severity": "MEDIUM",
+    "rule_reasons": [
+      "Suspicious process flag: tor"
+    ]
+  },
+  {
+    "event_id": "0a5d4cbe-0427-44b1-bf76-34b792f6abd8",
+    "device_id": "device-04",
+    "user_id": "student015",
+    "event_type": "usb_event",
+    "timestamp": "2026-04-08T18:26:58.473052-05:00",
+    "process_name": null,
+    "scenario": "chain_attack_D",
+    "scenario_step": 2,
+    "layer1_rule_score": 45,
+    "layer2_anomaly_score": 0,
+    "layer3_chain_intensity": 74.6327,
+    "layer3_chain_norm": 1.0,
+    "layer3_chain_points": 15.0,
+    "chain_contributing_events": 2,
+    "composite_score": 60.0,
+    "severity": "HIGH",
+    "rule_reasons": [
+      "USB triggered executable: E:/setup.exe"
+    ]
+  },
+  {
+    "event_id": "bcfc48d4-2a95-4fe2-a35d-0e7314b4c24f",
+    "device_id": "device-04",
+    "user_id": "student015",
+    "event_type": "cpu_spike",
+    "timestamp": "2026-04-08T18:28:28.473052-05:00",
+    "process_name": null,
+    "scenario": "chain_attack_D",
+    "scenario_step": 3,
+    "layer1_rule_score": 30,
+    "layer2_anomaly_score": 0,
+    "layer3_chain_intensity": 77.5879,
+    "layer3_chain_norm": 1.0,
+    "layer3_chain_points": 15.0,
+    "chain_contributing_events": 3,
+    "composite_score": 45.0,
+    "severity": "MEDIUM",
+    "rule_reasons": [
+      "Sustained CPU spike: 88.5% (12.6x baseline) for 700s"
+    ]
+  },
+  {
+    "event_id": "021180f8-070c-4cd9-974e-563bdd5dfc80",
+    "device_id": "device-04",
+    "user_id": "student015",
+    "event_type": "security_change",
+    "timestamp": "2026-04-08T18:29:43.473052-05:00",
+    "process_name": null,
+    "scenario": "chain_attack_D",
+    "scenario_step": 4,
+    "layer1_rule_score": 50,
+    "layer2_anomaly_score": 0,
+    "layer3_chain_intensity": 103.3254,
+    "layer3_chain_norm": 1.0,
+    "layer3_chain_points": 15.0,
+    "chain_contributing_events": 4,
+    "composite_score": 65.0,
+    "severity": "HIGH",
+    "rule_reasons": [
+      "Security component disabled: EDR_agent"
+    ]
+  }
+]
