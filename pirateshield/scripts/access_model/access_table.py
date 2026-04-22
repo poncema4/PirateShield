@@ -22,7 +22,7 @@ role_access_table = [
 
     },
     {
-        "role": "IT",
+        "role": "it",
         "system": "SIS",
         "allowed": ["make announcements", "edit system configuration", "view student course information",
                     "edit user accounts", "view system logs", "perform data backups"],
@@ -36,13 +36,12 @@ role_access_table = [
         "restricted": ["access academic records", "access disciplinary files"]
     }
 ]
-
 policy_rules = [
     {
         "rule_id": 1,
         "name": "Role Violation",
         "description": "Access attempt outside permitted role (e.g. student -> Admin Portal)",
-        "points": 40 
+        "points": 40
     },
     {
         "rule_id": 2,
@@ -62,4 +61,65 @@ policy_rules = [
         "description": "Multiple failed login or access attempts",
         "points": 25
     },
+    # velocity based
+    {
+        "rule_id": 5,
+        "name": "High Access Velocity",
+        "description": "User performing actions at abnormally high rate vs baseline",
+        "points": 25
+    },
+    {
+        "rule_id": 6,
+        "name": "Rapid Role Switching",
+        "description": "Multiple role-based access attempts across different systems in short window",
+        "points": 30
+    },
+    # FERPA
+    {
+        "rule_id": 7,
+        "name": "Unauthorized Student Record Access",
+        "description": "User accessing student records outside their assigned scope (FERPA violation)",
+        "points": 40
+    },
+    {
+        "rule_id": 8,
+        "name": "Mass Student Record Export",
+        "description": "Bulk export of student PII records beyond authorized threshold",
+        "points": 45
+    },
+    # COPPA
+    {
+        "rule_id": 9,
+        "name": "Minor Data Exposure Risk",
+        "description": "Access or export of personal data belonging to users under 13",
+        "points": 45
+    },
+    # Behavioral
+    {
+        "rule_id": 10,
+        "name": "Unusual Geographic Access",
+        "description": "Login or access attempt from unexpected location",
+        "points": 30
+    },
+    {
+        "rule_id": 11,
+        "name": "Concurrent Session Anomaly",
+        "description": "Same account active from multiple devices or IPs simultaneously",
+        "points": 35
+    },
+    {
+        "rule_id": 12,
+        "name": "Audit Log Tampering",
+        "description": "Attempt to modify or delete system audit logs",
+        "points": 50
+    },
+    {
+        "rule_id": 13,
+        "name": "Privilege Escalation Attempt",
+        "description": "User attempting to access resources beyond their assigned role level",
+        "points": 40
+    },
 ]
+
+
+# add test data
