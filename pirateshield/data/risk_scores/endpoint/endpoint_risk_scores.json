@@ -1,10 +1,10 @@
 [
   {
-    "event_id": "1f67cf20-871b-48d2-9efb-b4f35c53278e",
+    "event_id": "9a7e20ec-3ba8-4980-b342-1a63e9fc303a",
     "device_id": "device-01",
     "user_id": "student003",
     "event_type": "process_start",
-    "timestamp": "2026-04-08T17:40:58.473052-05:00",
+    "timestamp": "2026-04-30T12:17:39.461095-05:00",
     "process_name": "ngrok",
     "scenario": "chain_attack_A",
     "scenario_step": 1,
@@ -21,11 +21,11 @@
     ]
   },
   {
-    "event_id": "75e36896-d910-4ce0-b6c8-82af19b563da",
+    "event_id": "46a582c3-0c9a-4406-a8cc-324db7cec0a2",
     "device_id": "device-01",
     "user_id": "student003",
     "event_type": "cpu_spike",
-    "timestamp": "2026-04-08T17:43:58.473052-05:00",
+    "timestamp": "2026-04-30T12:20:39.461095-05:00",
     "process_name": null,
     "scenario": "chain_attack_A",
     "scenario_step": 2,
@@ -42,11 +42,11 @@
     ]
   },
   {
-    "event_id": "19f4843f-ce65-4575-81fc-6be3341c35f8",
+    "event_id": "4e751d11-fcde-4fce-8c0b-deb75c730e28",
     "device_id": "device-01",
     "user_id": "student003",
     "event_type": "security_change",
-    "timestamp": "2026-04-08T17:48:58.473052-05:00",
+    "timestamp": "2026-04-30T12:25:39.461095-05:00",
     "process_name": null,
     "scenario": "chain_attack_A",
     "scenario_step": 3,
@@ -63,11 +63,11 @@
     ]
   },
   {
-    "event_id": "3be62fa7-cf3d-4e8e-bbcd-dffca8441bff",
+    "event_id": "228feceb-0931-4671-b8bf-a43df88e2310",
     "device_id": "device-02",
     "user_id": "student007",
     "event_type": "usb_event",
-    "timestamp": "2026-04-08T17:55:58.473052-05:00",
+    "timestamp": "2026-04-30T12:32:39.461095-05:00",
     "process_name": null,
     "scenario": "chain_attack_B",
     "scenario_step": 1,
@@ -84,11 +84,11 @@
     ]
   },
   {
-    "event_id": "66208434-de1a-43cf-9f1a-26ef450a95d1",
+    "event_id": "539973a2-71b8-4241-be71-86e9c920039d",
     "device_id": "device-02",
     "user_id": "student007",
     "event_type": "process_start",
-    "timestamp": "2026-04-08T17:57:58.473052-05:00",
+    "timestamp": "2026-04-30T12:34:39.461095-05:00",
     "process_name": "mimikatz",
     "scenario": "chain_attack_B",
     "scenario_step": 2,
@@ -105,11 +105,11 @@
     ]
   },
   {
-    "event_id": "ee434eb8-d7a3-4fd4-9411-9714f26e86e3",
+    "event_id": "bdbf154c-2871-4417-bf9b-24d386af31bc",
     "device_id": "device-03",
     "user_id": "student011",
     "event_type": "security_change",
-    "timestamp": "2026-04-08T18:10:58.473052-05:00",
+    "timestamp": "2026-04-30T12:47:39.461095-05:00",
     "process_name": null,
     "scenario": "chain_attack_C",
     "scenario_step": 1,
@@ -126,11 +126,11 @@
     ]
   },
   {
-    "event_id": "01cfed62-67f6-4b0c-adb4-2cf0c9265a28",
+    "event_id": "f4564524-5fb4-47bc-a040-5e21fb00accc",
     "device_id": "device-03",
     "user_id": "student011",
     "event_type": "process_start",
-    "timestamp": "2026-04-08T18:15:58.473052-05:00",
+    "timestamp": "2026-04-30T12:52:39.461095-05:00",
     "process_name": "metasploit",
     "scenario": "chain_attack_C",
     "scenario_step": 2,
@@ -147,11 +147,11 @@
     ]
   },
   {
-    "event_id": "51e6ad5b-d0f4-4c02-80f6-030cb5039f18",
+    "event_id": "428f9c10-9e51-4377-b267-159b215a9010",
     "device_id": "device-04",
     "user_id": "student015",
     "event_type": "process_start",
-    "timestamp": "2026-04-08T18:25:58.473052-05:00",
+    "timestamp": "2026-04-30T13:02:39.461095-05:00",
     "process_name": "tor",
     "scenario": "chain_attack_D",
     "scenario_step": 1,
@@ -168,11 +168,11 @@
     ]
   },
   {
-    "event_id": "0a5d4cbe-0427-44b1-bf76-34b792f6abd8",
+    "event_id": "12cdc74c-ad1e-4742-8a91-1252bf005aa3",
     "device_id": "device-04",
     "user_id": "student015",
     "event_type": "usb_event",
-    "timestamp": "2026-04-08T18:26:58.473052-05:00",
+    "timestamp": "2026-04-30T13:03:39.461095-05:00",
     "process_name": null,
     "scenario": "chain_attack_D",
     "scenario_step": 2,
@@ -189,11 +189,11 @@
     ]
   },
   {
-    "event_id": "bcfc48d4-2a95-4fe2-a35d-0e7314b4c24f",
+    "event_id": "8bd1c219-2856-4ca2-95dd-12a1e4576ee3",
     "device_id": "device-04",
     "user_id": "student015",
     "event_type": "cpu_spike",
-    "timestamp": "2026-04-08T18:28:28.473052-05:00",
+    "timestamp": "2026-04-30T13:05:09.461095-05:00",
     "process_name": null,
     "scenario": "chain_attack_D",
     "scenario_step": 3,
@@ -210,11 +210,11 @@
     ]
   },
   {
-    "event_id": "021180f8-070c-4cd9-974e-563bdd5dfc80",
+    "event_id": "77fa667b-bddf-48a3-8fcc-638e39a89aa8",
     "device_id": "device-04",
     "user_id": "student015",
     "event_type": "security_change",
-    "timestamp": "2026-04-08T18:29:43.473052-05:00",
+    "timestamp": "2026-04-30T13:06:24.461095-05:00",
     "process_name": null,
     "scenario": "chain_attack_D",
     "scenario_step": 4,
