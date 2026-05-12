@@ -1,5 +1,4 @@
 
-
 role_access_table = [
     {
         "role": "student",
@@ -36,6 +35,7 @@ role_access_table = [
         "restricted": ["access academic records", "access disciplinary files"]
     }
 ]
+
 policy_rules = [
     {
         "rule_id": 1,
@@ -120,6 +120,3 @@ policy_rules = [
         "points": 40
     },
 ]
-
-
-# add test data

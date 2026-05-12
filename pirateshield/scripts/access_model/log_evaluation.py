@@ -23,8 +23,9 @@ ROLE_HOURS = {
     "principal":      (7, 18),
     "counselor":      (7, 17),
     "front office":   (7, 16),
-    "it":       (6, 20),   # broader window for maintenance
+    "it":             (6, 20),   # broader window for maintenance
     "administrator":  (7, 18),
+    "nurse":          (7, 16),
 }
 
 def is_off_hours(role, hour):
@@ -33,75 +34,159 @@ def is_off_hours(role, hour):
     start, end = ROLE_HOURS[role]
     return not (start <= hour < end)
 
-# Purpose: Computes access velocity score based on action frequency vs baseline
-# Velocity = actions taken in current window / expected baseline rate
-# Returns a point value if velocity exceeds threshold, 0 otherwise
+
+# Behavioral Context Scoring
+# Weighted additive formula — each signal
+# contributes a normalized intensity (0.0–1.0)
+# multiplied by its assigned weight.
+# Total scaled to the behavioral rule's max points.
+#
+# Weights represent relative contribution of each
+# signal to overall behavioral risk. Must sum to 1.0.
+
+
+BEHAVIORAL_WEIGHTS = {
+    "off_hours":           0.25,
+    "bulk_download":       0.20,
+    "failed_attempts":     0.20,
+    "geo_anomaly":         0.15,
+    "concurrent_session":  0.10,
+    "minor_data_exposure": 0.10,
+}
+
+BULK_DOWNLOAD_THRESHOLD   = 50    # files in a session
+FAILED_ATTEMPTS_THRESHOLD = 5     # matches original threshold
+
+def compute_behavioral_score(context, hour):
+    """
+    Returns (score, triggered_rule_names).
+
+    Each signal produces a 0.0–1.0 intensity value.
+    Partial credit applies where the signal is approaching
+    but has not fully crossed a threshold.
+    Final score is scaled to 0–50 range.
+    """
+    signals = {}
+    triggered = []
+
+    # Off-hours
+    if is_off_hours(context.role, hour):
+        signals["off_hours"] = 1.0
+        triggered.append(get_rule(3))
+    else:
+        signals["off_hours"] = 0.0
+
+    # Bulk download — partial credit
+    files = context.files_downloaded
+    if files >= BULK_DOWNLOAD_THRESHOLD:
+        signals["bulk_download"] = 1.0
+        triggered.append(get_rule(2))
+    elif files > 0:
+        signals["bulk_download"] = files / BULK_DOWNLOAD_THRESHOLD
+    else:
+        signals["bulk_download"] = 0.0
+
+    # Failed attempts — partial credit
+    attempts = context.failed_attempts
+    if attempts >= FAILED_ATTEMPTS_THRESHOLD:
+        signals["failed_attempts"] = 1.0
+        triggered.append(get_rule(4))
+    elif attempts > 0:
+        signals["failed_attempts"] = attempts / FAILED_ATTEMPTS_THRESHOLD
+    else:
+        signals["failed_attempts"] = 0.0
+
+    # Geographic anomaly
+    if not context.known_location:
+        signals["geo_anomaly"] = 1.0
+        triggered.append(get_rule(10))
+    else:
+        signals["geo_anomaly"] = 0.0
+
+    # Concurrent session
+    if context.concurrent_sessions > 1:
+        signals["concurrent_session"] = min(1.0, (context.concurrent_sessions - 1) / 3)
+        triggered.append(get_rule(11))
+    else:
+        signals["concurrent_session"] = 0.0
+
+    # Minor data exposure (COPPA)
+    if context.accessed_minor_data:
+        signals["minor_data_exposure"] = 1.0
+        triggered.append(get_rule(9))
+    else:
+        signals["minor_data_exposure"] = 0.0
+
+    # Weighted sum → scale to 0–50
+    raw = sum(BEHAVIORAL_WEIGHTS[k] * signals[k] for k in BEHAVIORAL_WEIGHTS)
+    score = round(raw * 50, 2)
+    return score, triggered
+
+
+# Access Velocity Scoring
+# Exponential decay model:
+#   V = Σ exp(-λ * Δt) for each past event
+#   Recent events weigh near 1.0; older decay toward 0.
+#   Normalized to 0–50 range.
+
+
 def compute_velocity_score(context):
-    if context.baseline_rate is None or context.baseline_rate == 0:
-        return 0
-    
-    # calculate how many actions were taken in the last time window
-    now = datetime.now()
-    recent_actions = [
-        t for t in context.action_timestamps
-        if (now - t).seconds <= context.velocity_window
-    ]
-    
-    current_rate = len(recent_actions) / context.velocity_window
-    velocity_ratio = current_rate / context.baseline_rate
+    """
+    Returns (score, triggered_rule_names).
 
-    if velocity_ratio >= 3.0:       # 3x baseline - critical
-        return 35
-    elif velocity_ratio >= 2.0:     # 2x baseline - high
-        return 25
-    elif velocity_ratio >= 1.5:     # 1.5x baseline - moderate
-        return 15
-    return 0
+    Uses BehavioralContext.compute_velocity() for the
+    exponential decay calculation, then scales to 0–50.
+    Rapid role switching adds a flat bonus if detected.
+    """
+    triggered = []
 
-# Purpose: Evaluates an incoming event against RBAC, behavioral, and velocity layers
-def evaluate_event(role, system, action, context):
+    velocity_normalized = context.compute_velocity()   # 0.0–1.0
+    score = round(velocity_normalized * 50, 2)
+
+    if score > 25:
+        triggered.append(get_rule(5))   # High Access Velocity
+
+    if context.rapid_role_switch_detected():
+        triggered.append(get_rule(6))   # Rapid Role Switching
+        score = min(50.0, score + 10.0)
+
+    return round(score, 2), triggered
+
+# Main Event Evaluator
+
+def evaluate_event(role, system, action, context, hour=None):
+    """
+    Evaluates an incoming event across three layers:
+      1. RBAC check       — is this action permitted for this role?
+      2. Behavioral score — weighted formula across contextual signals
+      3. Velocity score   — exponential decay over action timestamps
+
+    Final risk score capped at 100.
+    """
+    if hour is None:
+        hour = datetime.now().hour
+
     score = 0
     triggered = []
 
-    # Stage 1: RBAC check
+    # Layer 1 — RBAC
     if not is_allowed(role, system, action):
         rule = get_rule(1)  # Role Violation
         score += rule["points"]
         triggered.append(rule)
 
-    # Stage 2: Behavioral rules
-    if context.files_downloaded > 50:
-        rule = get_rule(2)  # Bulk Download
-        score += rule["points"]
-        triggered.append(rule)
+    # Layer 2 — Behavioral context (weighted formula)
+    behavioral_score, behavioral_rules = compute_behavioral_score(context, hour)
+    score += behavioral_score
+    triggered.extend(behavioral_rules)
 
-    # Stage 3: Time of access anomaly per role
-    current_hour = 10 # for testing, use datetime.now().hour normally
-    if is_off_hours(role, current_hour):
-        rule = get_rule(3)  # Off-Hours Sensitive Access
-        score += rule["points"]
-        triggered.append(rule)
+    # Layer 3 — Access velocity (exponential decay)
+    velocity_score, velocity_rules = compute_velocity_score(context)
+    score += velocity_score
+    triggered.extend(velocity_rules)
 
-    # Stage 4: Repeated failed attempts
-    if context.failed_attempts >= 5:
-        rule = get_rule(4)  # Repeated Failed Attempts
-        score += rule["points"]
-        triggered.append(rule)
-
-    # Stage 5: Access velocity scoring
-    velocity_points = compute_velocity_score(context)
-    if velocity_points > 0:
-        rule = get_rule(5)  # High Access Velocity
-        rule_copy = rule.copy()
-        rule_copy["points"] = velocity_points  # override with computed value
-        score += velocity_points
-        triggered.append(rule_copy)
-
-    # Stage 6: Concurrent session anomaly
-    if context.concurrent_sessions > 1:
-        rule = get_rule(11)  # Concurrent Session Anomaly
-        score += rule["points"]
-        triggered.append(rule)
+    # Cap at 100
+    score = round(min(100.0, score), 2)
 
     return {
         "score": score,
