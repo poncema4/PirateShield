@@ -19,7 +19,6 @@ from tensorflow.keras import layers
 
 from sklearn.metrics import roc_auc_score
 
-# !! WIP !! 
 # CONSTANTS -------------------------------------------------------
 
 K_FOLDS = 10
