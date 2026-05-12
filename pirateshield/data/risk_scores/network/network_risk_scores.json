@@ -276,9 +276,16 @@
   },
   {
     "event_id": "22dc2c44-6f99-47ec-a1bb-650f75853205",
-    "event_type": "dns_lookup",
+    "user_id": "it_staff3",
+    "device_id": "host-D",
+    "timestamp": "2026-03-31 17:08:52.995422+00:00",
     "source_ip": "172.16.0.3",
     "destination_ip": "91.108.4.1",
+    "destination_port": 53,
+    "protocol": "UDP",
+    "event_type": "dns_lookup",
+    "bytes_sent": 2065,
+    "bytes_received": 27719,
     "m01_score": 0,
     "m02_score": 0,
     "m03_score": 0,
@@ -289,6 +296,7 @@
     "m08_score": 71,
     "risk_score": 71,
     "risk_label": "HIGH",
+    "risk_action": "No action",
     "alert": true
   }
 ]
