@@ -1,5 +1,5 @@
 # Layer 2 autoencoder - train and evaluate on ADFA-LD dataset
-# Feature extraction: term frequency per trace (Zhang)
+# Feature extraction: term frequency per trace (Zhang et al. 2021)
 # Anomaly score: mean squared reconstruction error
 # Evaluation: 10-fold cross-validation, reports TPR / FPR / AUC
 #
@@ -22,7 +22,7 @@ from sklearn.metrics import roc_auc_score
 # CONSTANTS -------------------------------------------------------
 
 K_FOLDS = 10
-EPOCHS = 50
+EPOCHS = 100
 BATCH_SIZE = 32
 THRESHOLD_PERCENTILE = 95   # 95th percentile of normal train errors sets the anomaly threshold
 ENCODER_DIM1 = 64
@@ -51,6 +51,10 @@ def parse_adfa_ld(data_dir: Path):
 
     normal_traces = _load_traces_from_dir(normal_dir, recurse=False)
     attack_traces = _load_traces_from_dir(attack_dir, recurse=True)
+
+    validation_dir = data_dir / "Validation_Data_Master"
+    if validation_dir.exists():
+        normal_traces += _load_traces_from_dir(validation_dir, recurse=False)
 
     return normal_traces, attack_traces
 
@@ -110,18 +114,61 @@ def traces_to_tf_vectors(traces: list, vocab: dict) -> np.ndarray:
     return np.array([trace_to_tf_vector(t, vocab) for t in traces], dtype=np.float32)
 
 
+def build_bigram_vocab(traces: list) -> dict:
+    """Build consecutive syscall pair to index mapping from normal traces only."""
+    unique_bigrams = set()
+    for trace in traces:
+        for i in range(len(trace) - 1):
+            unique_bigrams.add((trace[i], trace[i + 1]))
+    return {bigram: idx for idx, bigram in enumerate(sorted(unique_bigrams))}
+
+
+def trace_to_feature_vector(trace: list, unigram_vocab: dict, bigram_vocab: dict) -> np.ndarray:
+    """Combine unigram TF and bigram TF into one feature vector."""
+    total = len(trace)
+
+    uni_vec = np.zeros(len(unigram_vocab), dtype=np.float32)
+    if total > 0:
+        for s in trace:
+            idx = unigram_vocab.get(s)
+            if idx is not None:
+                uni_vec[idx] += 1
+        uni_vec /= total
+
+    bi_vec = np.zeros(len(bigram_vocab), dtype=np.float32)
+    n_bigrams = total - 1
+    if n_bigrams > 0:
+        for i in range(n_bigrams):
+            idx = bigram_vocab.get((trace[i], trace[i + 1]))
+            if idx is not None:
+                bi_vec[idx] += 1
+        bi_vec /= n_bigrams
+
+    return np.concatenate([uni_vec, bi_vec])
+
+
+def traces_to_feature_vectors(traces: list, unigram_vocab: dict, bigram_vocab: dict) -> np.ndarray:
+    """Convert a list of traces to a matrix of combined unigram+bigram TF vectors."""
+    return np.array([trace_to_feature_vector(t, unigram_vocab, bigram_vocab) for t in traces], dtype=np.float32)
+
+
 # MODEL -----------------------------------------------------------
 
 def build_autoencoder(input_dim: int) -> keras.Model:
-    """Build and compile the autoencoder.
+    """Build and compile the autoencoder with layer sizes scaled to input_dim.
 
-    Architecture: input_dim -> 64 -> 32 -> 64 -> input_dim
+    Architecture: input_dim -> h1 -> h2 -> h1 -> input_dim
+    h1 and h2 scale proportionally so compression stays gradual at any input size.
     Encoder uses ReLU. Output uses sigmoid since TF values are in [0, 1].
     """
+    h1 = max(ENCODER_DIM1, input_dim // 8)
+    h2 = max(BOTTLENECK_DIM, input_dim // 32)
+
     inputs = keras.Input(shape=(input_dim,))
-    encoded = layers.Dense(ENCODER_DIM1, activation="relu")(inputs)
-    bottleneck = layers.Dense(BOTTLENECK_DIM, activation="relu")(encoded)
-    decoded = layers.Dense(ENCODER_DIM1, activation="relu")(bottleneck)
+    encoded = layers.Dense(h1, activation="relu")(inputs)
+    encoded = layers.Dropout(0.2)(encoded)
+    bottleneck = layers.Dense(h2, activation="relu")(encoded)
+    decoded = layers.Dense(h1, activation="relu")(bottleneck)
     outputs = layers.Dense(input_dim, activation="sigmoid")(decoded)
 
     model = keras.Model(inputs, outputs, name="endpoint_autoencoder")
@@ -132,8 +179,7 @@ def build_autoencoder(input_dim: int) -> keras.Model:
 def reconstruction_errors(model: keras.Model, vectors: np.ndarray) -> np.ndarray:
     """Return per-sample mean squared reconstruction error."""
     reconstructed = model.predict(vectors, verbose=0)
-    errors = np.mean((vectors - reconstructed) ** 2, axis=1)
-    return errors
+    return np.mean((vectors - reconstructed) ** 2, axis=1)
 
 
 # EVALUATION ------------------------------------------------------
