@@ -1,6 +1,5 @@
 # Scoring system for endpoints/devices
-# Currently implements Layer 1 (rule-based) and Layer 3 (chain detection).
-# Layer 2 (autoencoder anomaly scoring) is a placeholder until i do it 
+# Implements all three layers: Layer 1 (rule-based), Layer 2 (autoencoder anomaly), Layer 3 (chain detection).
 # Defaults to running script using json file made with generate_device_events.py
 
 # Composite score: DeviceRisk = min(S_rules + AnomalyPoints + ChainPoints, 100)
@@ -18,6 +17,7 @@ import json
 import math
 import sys
 import argparse
+import numpy as np
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -90,12 +90,65 @@ def score_rules(event):
     return score, reasons
 
 
-# LAYER 2: AUTOENCODER ANOMALY SCORING (placeholder) ----------------
+# LAYER 2: AUTOENCODER ANOMALY SCORING --------------------------------
+
+# lazy-load state - model and vocab loaded once on first call
+_L2_MODEL = None
+_L2_VOCAB = None
+_L2_THRESHOLD = None
+_L2_LOADED = False
+
+
+def _load_layer2():
+    """Load the trained autoencoder model and syscall vocab from disk once."""
+    global _L2_MODEL, _L2_VOCAB, _L2_THRESHOLD, _L2_LOADED
+    if _L2_LOADED:
+        return
+    _L2_LOADED = True
+
+    model_path = BASE_DIR / "data" / "models" / "autoencoder_model.keras"
+    vocab_path = BASE_DIR / "data" / "models" / "syscall_vocab.json"
+
+    if not model_path.exists() or not vocab_path.exists():
+        print("[Layer 2] model or vocab not found - anomaly scoring disabled")
+        return
+
+    try:
+        import tensorflow as tf
+        _L2_MODEL = tf.keras.models.load_model(str(model_path))
+        with open(vocab_path) as f:
+            saved = json.load(f)
+        _L2_VOCAB = {int(k): v for k, v in saved["vocab"].items()}
+        _L2_THRESHOLD = float(saved["threshold"])
+        print(f"[Layer 2] model loaded - vocab size {len(_L2_VOCAB)}, threshold {_L2_THRESHOLD:.6f}")
+    except Exception as e:
+        print(f"[Layer 2] failed to load model: {e}")
+
 
 def score_anomaly(event):
-    """Layer 2 placeholder. Returns anomaly points once autoencoder is trained."""
-    # (load trained autoencoder)
-    return 0
+    """Layer 2 autoencoder anomaly scoring. Returns 0-20 anomaly points."""
+    _load_layer2()
+    if _L2_MODEL is None or _L2_VOCAB is None:
+        return 0
+
+    trace = event.get("syscall_trace")
+    if not trace or len(trace) == 0:
+        return 0
+
+    # build term-frequency vector (Zhang et al. 2021, Eq. 3)
+    vec = np.zeros(len(_L2_VOCAB), dtype=np.float32)
+    for sid in trace:
+        idx = _L2_VOCAB.get(sid)
+        if idx is not None:
+            vec[idx] += 1
+    vec /= len(trace)
+
+    reconstructed = _L2_MODEL.predict(vec.reshape(1, -1), verbose=0)[0]
+    error = float(np.mean((vec - reconstructed) ** 2))
+
+    # normalize against the 95th-percentile threshold from training
+    anomaly_points = min((error / _L2_THRESHOLD) * 20.0, 20.0)
+    return round(anomaly_points, 2)
 
 
 # LAYER 3: HAWKES-INSPIRED CHAIN DETECTION ------------------
@@ -108,9 +161,12 @@ def parse_timestamp(ts_str):
         return 0.0
 
 
-def compute_chain_scores(events):
-    """Score every event with all three layers and return results list."""
+def compute_chain_scores(events, use_layer2=True, use_layer3=True):
+    """Score every event with all three layers and return results list.
 
+    use_layer2 and use_layer3 flags allow ablation - disable either layer
+    to isolate its contribution for evaluation.
+    """
     events_sorted = sorted(events, key=lambda e: parse_timestamp(e.get("timestamp", "")))
 
     # pre-compute Layer 1 and Layer 2 scores for every event
@@ -118,7 +174,7 @@ def compute_chain_scores(events):
         rule_score, rule_reasons = score_rules(event)
         event["_rule_score"] = rule_score
         event["_rule_reasons"] = rule_reasons
-        event["_anomaly_score"] = score_anomaly(event)
+        event["_anomaly_score"] = score_anomaly(event) if use_layer2 else 0
         # suspicion signal used by chain intensity - take the higher of the two layers
         event["_suspicion"] = max(rule_score, event["_anomaly_score"])
 
@@ -136,27 +192,28 @@ def compute_chain_scores(events):
             chain_intensity = 0.0
             contributing_events = 0
 
-            # sum decayed suspicion scores from all prior events on this device within the window
-            for j in range(i):
-                prior = device_events[j]
-                t_prior = parse_timestamp(prior.get("timestamp", ""))
-                age = t_current - t_prior
+            if use_layer3:
+                # sum decayed suspicion scores from all prior events on this device within the window
+                for j in range(i):
+                    prior = device_events[j]
+                    t_prior = parse_timestamp(prior.get("timestamp", ""))
+                    age = t_current - t_prior
 
-                if age > WINDOW_SECONDS or age < 0:
-                    continue
+                    if age > WINDOW_SECONDS or age < 0:
+                        continue
 
-                s_i = prior["_suspicion"]
-                if s_i <= 0:
-                    continue
+                    s_i = prior["_suspicion"]
+                    if s_i <= 0:
+                        continue
 
-                decay_factor = math.exp(-DECAY_RATE * age)
-                chain_intensity += s_i * decay_factor
-                contributing_events += 1
+                    decay_factor = math.exp(-DECAY_RATE * age)
+                    chain_intensity += s_i * decay_factor
+                    contributing_events += 1
 
-            # include the current event's own suspicion in chain intensity (no decay)
-            if current["_suspicion"] > 0:
-                chain_intensity += current["_suspicion"] * 1.0
-                contributing_events += 1
+                # include the current event's own suspicion in chain intensity (no decay)
+                if current["_suspicion"] > 0:
+                    chain_intensity += current["_suspicion"] * 1.0
+                    contributing_events += 1
 
             chain_norm = min(chain_intensity / C_MAX, 1.0) if C_MAX > 0 else 0.0
             chain_points = min(chain_norm * CHAIN_CAP, CHAIN_CAP)
